@@ -30,11 +30,11 @@
 		"required": [
 			"CF_API_TOKEN",
 			"CF_ZONE_ID",
-			"DDNS_SHARED_SECRET",
-			"DDNS_ALLOWED_HOSTNAMES"
+			"DDNS_SHARED_SECRET"
 		]
 	},
 	"vars": {
+		"DDNS_ALLOWED_HOSTNAMES": "nas.example.com,*.nas.example.com",
 		"DDNS_PROXIED": "false",
 		"DDNS_TTL": "1",
 		"DDNS_LOG_RETENTION_DAYS": "30"

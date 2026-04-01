@@ -8,6 +8,7 @@
 		"pnpm": ">=9"
 	},
 	"dependencies": {
+		"@clack/prompts": "^1.2.0",
 		"chanfana": "^3.3.0",
 		"cloudflare": "^5.2.0",
 		"hono": "4.12.9",
@@ -31,5 +32,30 @@
 		"predeploy": "node --experimental-strip-types ./scripts/verify-setup.ts && wrangler d1 migrations apply DB --remote",
 		"dev": "wrangler d1 migrations apply DB --local && wrangler dev",
 		"test": "wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
+	},
+	"cloudflare": {
+		"bindings": {
+			"CF_API_TOKEN": {
+				"description": "Cloudflare API token with Zone > DNS > Edit permission for the zone this worker will update."
+			},
+			"CF_ZONE_ID": {
+				"description": "Zone ID from your domain overview page in the Cloudflare dashboard."
+			},
+			"DDNS_SHARED_SECRET": {
+				"description": "Long random password used by Synology or other clients to authenticate update requests."
+			},
+			"DDNS_ALLOWED_HOSTNAMES": {
+				"description": "Comma-separated allowlist of DNS names this worker may update, for example nas.example.com,*.nas.example.com."
+			},
+			"DDNS_PROXIED": {
+				"description": "Set to false for most NAS setups. Use true only if you want the updated records proxied through Cloudflare."
+			},
+			"DDNS_TTL": {
+				"description": "Use 1 for automatic TTL, or a value from 60 to 86400 seconds."
+			},
+			"DDNS_LOG_RETENTION_DAYS": {
+				"description": "How many days of update logs to keep in D1 before scheduled cleanup removes them."
+			}
+		}
 	}
 }

@@ -42,6 +42,7 @@ The setup wizard will:
 
 - create or attach a D1 database
 - prompt for the required secrets
+- write the hostname allowlist into `wrangler.jsonc`
 - validate the worker configuration
 - offer to apply migrations and deploy immediately
 
@@ -105,11 +106,24 @@ You can also use `pnpm setup:secrets`, which prompts for the values and uploads 
 | `CF_API_TOKEN` | Cloudflare API token with DNS:Edit for your zone |
 | `CF_ZONE_ID` | Zone ID (visible on your domain's overview page in the dashboard) |
 | `DDNS_SHARED_SECRET` | A password you choose. Callers must send this to authenticate. |
-| `DDNS_ALLOWED_HOSTNAMES` | Comma-separated hostnames this worker may update, e.g. `nas.example.com,home.example.com`. Wildcard companions such as `*.nas.example.com` are supported as explicit entries. |
-
 The repository includes [`.env.production.example`](./.env.production.example) so the manual upload path has a ready-made template.
 
-### 4. Deploy
+### 4. Configure allowed hostnames
+
+Set `DDNS_ALLOWED_HOSTNAMES` in `wrangler.jsonc` under `vars`:
+
+```jsonc
+"vars": {
+  "DDNS_ALLOWED_HOSTNAMES": "nas.example.com,*.nas.example.com",
+  "DDNS_PROXIED": "false",
+  "DDNS_TTL": "1",
+  "DDNS_LOG_RETENTION_DAYS": "30"
+}
+```
+
+You can also use `pnpm setup:secrets`, which uploads the actual secrets and writes `DDNS_ALLOWED_HOSTNAMES` into `wrangler.jsonc` for you.
+
+### 5. Deploy
 
 ```sh
 pnpm deploy
@@ -119,10 +133,11 @@ This runs D1 migrations automatically before deploying.
 
 ## Environment variables
 
-These non-secret variables have defaults in `wrangler.jsonc` and can be overridden per-environment:
+These non-secret variables live in `wrangler.jsonc` and can be overridden per-environment:
 
 | Variable | Default | Description |
 |---|---|---|
+| `DDNS_ALLOWED_HOSTNAMES` | none | Required. Comma-separated hostnames this worker may update, e.g. `nas.example.com,home.example.com`. Wildcard companions such as `*.nas.example.com` are supported as explicit entries. |
 | `DDNS_PROXIED` | `"false"` | Whether DNS records are proxied through Cloudflare. Most NAS setups need `"false"` (DNS-only) for direct IP access on non-standard ports. |
 | `DDNS_TTL` | `"1"` | DNS record TTL in seconds. `"1"` means automatic. Valid range: 60-86400. |
 | `DDNS_LOG_RETENTION_DAYS` | `"30"` | How many days of update logs to keep in D1. A cron job runs every 6 hours to prune older rows. |
