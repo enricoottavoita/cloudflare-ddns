@@ -1,50 +1,77 @@
+import type { DdnsEnv } from "./types";
+
 import { ApiException, fromHono } from "chanfana";
 import { Hono } from "hono";
-import { tasksRouter } from "./endpoints/tasks/router";
-import { ContentfulStatusCode } from "hono/utils/http-status";
-import { DummyEndpoint } from "./endpoints/dummyEndpoint";
+import { HTTPException } from "hono/http-exception";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-// Start a Hono app
-const app = new Hono<{ Bindings: Env }>();
+import { HealthEndpoint } from "./endpoints/health";
+import { handleSynologyUpdate } from "./endpoints/synology";
+import { UpdateEndpoint } from "./endpoints/update";
+import { cleanupLogs } from "./logging";
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
+
+const app = new Hono<{ Bindings: DdnsEnv }>();
 
 app.onError((err, c) => {
 	if (err instanceof ApiException) {
-		// If it's a Chanfana ApiException, let Chanfana handle the response
 		return c.json(
 			{ success: false, errors: err.buildResponse() },
 			err.status as ContentfulStatusCode,
 		);
 	}
 
-	console.error("Global error handler caught:", err); // Log the error if it's not known
+	if (err instanceof HTTPException) {
+		return err.getResponse();
+	}
 
-	// For other errors, return a generic 500 response
-	return c.json(
-		{
-			success: false,
-			errors: [{ code: 7000, message: "Internal Server Error" }],
-		},
-		500,
-	);
+	console.error("Unhandled error:", err);
+	return c.json({ success: false, errors: [{ code: 7000, message: "Internal Server Error" }] }, 500);
 });
 
-// Setup OpenAPI registry
+// Plain Hono route (DynDNS2 text responses, not suited for OpenAPI).
+app.get("/nic/update", handleSynologyUpdate);
+
+// Chanfana OpenAPI routes (JSON, auto-documented).
 const openapi = fromHono(app, {
 	docs_url: "/",
 	schema: {
 		info: {
-			title: "My Awesome API",
-			version: "2.0.0",
-			description: "This is the documentation for my awesome API.",
+			title: "Cloudflare DDNS",
+			version: "1.0.0",
+			description:
+				"A Cloudflare Worker that acts as a DDNS provider. " +
+				"Synology NAS devices (and other clients) call this service " +
+				"to keep DNS records in sync with a changing public IP address.",
 		},
 	},
 });
 
-// Register Tasks Sub router
-openapi.route("/tasks", tasksRouter);
+openapi.get("/health", HealthEndpoint);
+openapi.post("/update", UpdateEndpoint);
 
-// Register other endpoints
-openapi.post("/dummy/:slug", DummyEndpoint);
+// ---------------------------------------------------------------------------
+// Scheduled handler: prune old D1 log rows
+// ---------------------------------------------------------------------------
 
-// Export the Hono app
-export default app;
+export default {
+	fetch: app.fetch,
+
+	async scheduled(
+		_event: ScheduledEvent,
+		env: DdnsEnv,
+		ctx: ExecutionContext,
+	): Promise<void> {
+		const retentionDays = Number.parseInt(env.DDNS_LOG_RETENTION_DAYS ?? "30", 10) || 30;
+		ctx.waitUntil(
+			cleanupLogs(env.DB, retentionDays).then((deleted) => {
+				if (deleted > 0) {
+					console.log(`Cleaned up ${deleted} DDNS log rows older than ${retentionDays} days`);
+				}
+			}),
+		);
+	},
+};
