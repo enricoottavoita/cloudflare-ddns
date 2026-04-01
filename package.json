@@ -37,7 +37,7 @@
 	"cloudflare": {
 		"bindings": {
 			"CF_API_TOKEN": {
-				"description": "Cloudflare API token with Zone > DNS > Edit permission for the zone this worker will update. In the Cloudflare dashboard, start from the Edit Zone DNS template and scope it to one zone."
+				"description": "Cloudflare API token with Zone > DNS > Edit permission for the zone this worker will update. In the Cloudflare dashboard, start from the Edit Zone DNS template, which grants zone-scoped DNS Write access."
 			},
 			"CF_ZONE_ID": {
 				"description": "Zone ID from your domain Overview page in the Cloudflare dashboard. Cloudflare shows it in the API section on the right side."

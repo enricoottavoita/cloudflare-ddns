@@ -52,8 +52,8 @@ If you want the manual Wrangler flow instead, keep reading.
 
 If you want the easiest Deploy to Cloudflare path, open these in separate tabs before you press the button:
 
-- [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) for Cloudflare's normal token flow. Choose the `Edit Zone DNS` template, then restrict it to the one zone you want this worker to manage.
-- [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) if you want Cloudflare's list of built-in templates and their default permissions.
+- [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) for Cloudflare's `Edit Zone DNS` template, which grants the zone-scoped `DNS Write` permission this worker needs. Restrict the token to the one zone you want this worker to manage.
+- [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) if you want Cloudflare's step-by-step token creation flow after confirming the right template and permission.
 - [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/) if you do not already know where Cloudflare shows the zone ID.
 - [1Password password generator](https://1password.com/password-generator/) or [Bitwarden password generator](https://bitwarden.com/password-generator/) if you want a browser-based shared secret generator from a reputable password-manager vendor.
 
@@ -65,7 +65,7 @@ Deploy to Cloudflare can prefill descriptions and defaults, but it cannot curren
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier works)
 - A domain with its DNS managed by Cloudflare
-- A [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with **Zone > DNS > Edit** permission for your zone. The easiest way to create one is Cloudflare's [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) flow using the `Edit Zone DNS` template.
+- A [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) created from Cloudflare's [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) page using the `Edit Zone DNS` template. That template grants the zone-scoped `DNS Write` permission this worker needs.
 - Your zone ID from the domain overview page in the Cloudflare dashboard. Cloudflare documents the lookup flow in [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/).
 - [Node.js](https://nodejs.org/) 22+ and [pnpm](https://pnpm.io/) 9+
 
@@ -83,7 +83,7 @@ If you prefer to run the steps separately:
 pnpm setup:db
 pnpm setup:secrets
 pnpm verify-setup
-pnpm deploy
+pnpm run deploy
 ```
 
 ### Manual Wrangler setup
@@ -107,12 +107,12 @@ Copy the `database_id` from the output and paste it into `wrangler.jsonc` replac
 If you deploy from CI or another automated pipeline, keep the placeholder in git and inject the real value at deploy time instead:
 
 ```sh
-D1_DATABASE_ID=<your-d1-database-uuid> pnpm deploy
+D1_DATABASE_ID=<your-d1-database-uuid> pnpm run deploy
 ```
 
 If your remote database is not named `cloudflare-ddns-db`, also set `D1_DATABASE_NAME`. The `predeploy` script writes those values into `wrangler.jsonc` in the deploy workspace before validation and migrations run.
 
-If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm deploy` instead of `npx wrangler deploy`. Workers Builds defaults to calling Wrangler directly, which skips the package-script lifecycle and therefore skips this repository's `predeploy` step.
+If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm run deploy` instead of `npx wrangler deploy`. This repository uses a pnpm workspace, so `pnpm deploy` runs pnpm's built-in workspace deploy command rather than the package script. `pnpm run deploy` is the form that runs this repository's `predeploy` step before `wrangler deploy`.
 
 ### 3. Set secrets
 
@@ -126,7 +126,7 @@ You can also use `pnpm setup:secrets`, which prompts for the values and uploads 
 
 | Secret | Description |
 |---|---|
-| `CF_API_TOKEN` | Cloudflare API token with DNS:Edit for your zone. The easiest starting point is Cloudflare's [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) flow using the `Edit Zone DNS` template. |
+| `CF_API_TOKEN` | Cloudflare API token for your zone created from Cloudflare's [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) page using the `Edit Zone DNS` template. That template grants the required zone-scoped `DNS Write` permission. |
 | `CF_ZONE_ID` | Zone ID from your domain Overview page. If you do not know where to look, use [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/). |
 | `DDNS_SHARED_SECRET` | A password you choose. Callers must send this to authenticate. Use at least 32 random characters. |
 The repository includes [`.env.production.example`](./.env.production.example) so the manual upload path has a ready-made template.
@@ -149,12 +149,12 @@ You can also use `pnpm setup:secrets`, which uploads the actual secrets and writ
 ### 5. Deploy
 
 ```sh
-pnpm deploy
+pnpm run deploy
 ```
 
 This runs D1 migrations automatically before deploying.
 
-For automated deploys, export `D1_DATABASE_ID` in the job environment before running `pnpm deploy`. You only need `D1_DATABASE_NAME` if the bound database name differs from the default.
+For automated deploys, export `D1_DATABASE_ID` in the job environment before running `pnpm run deploy`. You only need `D1_DATABASE_NAME` if the bound database name differs from the default.
 
 For Workers Builds specifically, add `D1_DATABASE_ID` under Cloudflare dashboard Settings > Build > Build variables and secrets. Runtime Worker secrets from Settings > Variables & Secrets are not exposed to the build/deploy process.
 

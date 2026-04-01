@@ -17,7 +17,7 @@ export async function setupProject(options: SetupProjectOptions = {}): Promise<v
 
 	const shouldDeploy = options.deployNow ?? (await promptYesNo("Run remote migrations and deploy now?", true));
 	if (!shouldDeploy) {
-		await outro("Setup complete. Run `pnpm deploy` when you are ready.");
+		await outro("Setup complete. Run `pnpm run deploy` when you are ready.");
 		return;
 	}
 
