@@ -25,7 +25,7 @@ When your NAS or a cron script calls this worker, it reads the caller's IP from 
 ### 1. Clone and install
 
 ```sh
-git clone https://github.com/<your-org>/cloudflare-ddns.git
+git clone https://github.com/okikio/cloudflare-ddns.git
 cd cloudflare-ddns
 pnpm install
 ```
