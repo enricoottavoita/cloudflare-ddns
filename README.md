@@ -112,6 +112,8 @@ D1_DATABASE_ID=<your-d1-database-uuid> pnpm deploy
 
 If your remote database is not named `cloudflare-ddns-db`, also set `D1_DATABASE_NAME`. The `predeploy` script writes those values into `wrangler.jsonc` in the deploy workspace before validation and migrations run.
 
+If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm deploy` instead of `npx wrangler deploy`. Workers Builds defaults to calling Wrangler directly, which skips the package-script lifecycle and therefore skips this repository's `predeploy` step.
+
 ### 3. Set secrets
 
 ```sh
@@ -153,6 +155,8 @@ pnpm deploy
 This runs D1 migrations automatically before deploying.
 
 For automated deploys, export `D1_DATABASE_ID` in the job environment before running `pnpm deploy`. You only need `D1_DATABASE_NAME` if the bound database name differs from the default.
+
+For Workers Builds specifically, add `D1_DATABASE_ID` under Cloudflare dashboard Settings > Build > Build variables and secrets. Runtime Worker secrets from Settings > Variables & Secrets are not exposed to the build/deploy process.
 
 ## Environment variables
 
