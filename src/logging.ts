@@ -1,10 +1,10 @@
 /**
- * D1-backed update logging.
+ * Best-effort D1-backed update logging.
  *
  * Each DDNS update attempt (success or failure) is recorded so operators
- * can audit what happened. A scheduled cron job calls `cleanupLogs` to
- * prune rows older than the configured retention period, keeping the
- * D1 database within free-tier row limits.
+ * can audit what happened when the `ddns_logs` table has already been
+ * created via D1 migrations. A scheduled cron job calls `cleanupLogs` to
+ * prune rows older than the configured retention period.
  */
 
 import type { UpdateAction } from "./types";
@@ -23,8 +23,8 @@ export interface DdnsLogEntry {
  * Insert a single update log row into D1.
  *
  * Failures are intentionally swallowed (logged to console) so that a
- * D1 hiccup does not prevent the DNS update response from reaching
- * the caller.
+ * missing table, failed migration, or transient D1 hiccup does not
+ * prevent the DNS update response from reaching the caller.
  */
 export async function logUpdate(db: D1Database, entry: DdnsLogEntry): Promise<void> {
 	try {
@@ -49,7 +49,7 @@ export async function logUpdate(db: D1Database, entry: DdnsLogEntry): Promise<vo
 
 /**
  * Delete log rows older than `retentionDays` days.
- * Returns the number of deleted rows, or 0 if the cleanup fails.
+ * Returns the number of deleted rows, or 0 if cleanup is unavailable.
  */
 export async function cleanupLogs(db: D1Database, retentionDays: number): Promise<number> {
 	try {

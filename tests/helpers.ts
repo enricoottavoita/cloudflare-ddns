@@ -122,6 +122,11 @@ export function createMockDnsApi() {
 	};
 }
 
+export async function dropLogSchema(db: D1Database): Promise<void> {
+	await db.prepare("DROP INDEX IF EXISTS idx_ddns_logs_created_at").run();
+	await db.prepare("DROP TABLE IF EXISTS ddns_logs").run();
+}
+
 /** Build a Synology-style update URL with sensible defaults. */
 export function makeSynologyUrl(
 	overrides: {

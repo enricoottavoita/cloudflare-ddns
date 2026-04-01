@@ -91,7 +91,7 @@ export async function setupSecrets(): Promise<{
 
 async function main(): Promise<void> {
 	await setupSecrets();
-	await outro("Next: run `pnpm verify-setup` or `pnpm setup`.");
+	await outro("Next: run `pnpm run deploy` or `pnpm run migrate:remote` if you attached a specific D1 database locally.");
 }
 
 if (isMainModule(import.meta.url)) {

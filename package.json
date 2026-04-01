@@ -23,13 +23,11 @@
 	},
 	"scripts": {
 		"cf-typegen": "wrangler types",
-		"setup": "node --experimental-strip-types ./scripts/setup.ts",
 		"setup:db": "node --experimental-strip-types ./scripts/setup-db.ts",
 		"setup:secrets": "node --experimental-strip-types ./scripts/setup-secrets.ts",
-		"verify-setup": "node --experimental-strip-types ./scripts/verify-setup.ts",
 		"typecheck:scripts": "tsc -p tsconfig.scripts.json",
 		"deploy": "wrangler deploy",
-		"predeploy": "node --experimental-strip-types ./scripts/verify-setup.ts && wrangler d1 migrations apply DB --remote",
+		"migrate:remote": "wrangler d1 migrations apply DB --remote",
 		"dev": "wrangler d1 migrations apply DB --local && wrangler dev",
 		"test": "wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
 	},

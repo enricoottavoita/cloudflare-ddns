@@ -2,7 +2,7 @@ import { SELF } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createMockDnsApi } from "../helpers";
+import { createMockDnsApi, dropLogSchema } from "../helpers";
 
 const dns = createMockDnsApi();
 const DEFAULT_ALLOWED_HOSTNAMES = "nas.example.com,home.example.com";
@@ -247,5 +247,21 @@ describe("POST /update — D1 logging", () => {
 			"*.nas.example.com",
 			"nas.example.com",
 		]);
+	});
+
+	it("recreates the log schema on first write when the table is missing", async () => {
+	it("still updates DNS when the log table is missing", async () => {
+		await dropLogSchema(env.DB);
+
+		const response = await SELF.fetch(makeUpdateRequest({ ip: "198.51.100.21" }));
+		expect(response.status).toBe(200);
+
+		await new Promise((r) => setTimeout(r, 50));
+
+		const { results } = await env.DB.prepare(
+			"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'ddns_logs'",
+		).all();
+
+		expect(results).toHaveLength(0);
 	});
 });

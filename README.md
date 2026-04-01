@@ -10,14 +10,14 @@ When your NAS or a cron script calls this worker, it reads the caller's IP from 
 ![Synology DSM DDNS settings showing a custom Cloudflare provider using a Cloudflare Worker /nic/update DynDNS2 URL with hostname, IP, username, and password fields.](assets/synology-ddns-dashboard.png)
 
 > [!NOTE]
-> Use Deploy to Cloudflare if you want Cloudflare to create your own copy of the repo, provision supported resources such as D1, and build the Worker for you. Keep your zone-specific values ready before you start: the setup flow still needs your Cloudflare API token, zone ID, shared secret, and allowed hostnames. The helper links below are the fastest way to gather them.
+> Use Deploy to Cloudflare if you want Cloudflare to create your own copy of the repo, provision supported resources such as D1, and build the Worker for you. This avoids a manual local clone, but Cloudflare's documented button flow still creates a new GitHub or GitLab repository copy for the user. Keep your zone-specific values ready before you start: the setup flow still needs your Cloudflare API token, zone ID, shared secret, and allowed hostnames. The helper links below are the fastest way to gather them.
 
 ## Features
 
 - Synology DSM custom DDNS provider compatibility (`GET /nic/update`)
 - JSON API for scripts and automation (`POST /update` with OpenAPI docs)
 - IPv4 (A) and IPv6 (AAAA) support
-- D1-backed audit log with automatic cleanup
+- Optional D1-backed audit log with scheduled cleanup
 - Hostname allowlist to limit what records can be changed
 - Configurable proxied/DNS-only mode and TTL
 
@@ -26,8 +26,7 @@ When your NAS or a cron script calls this worker, it reads the caller's IP from 
 Choose the path that matches how you want to manage the project:
 
 - Deploy to Cloudflare for a dashboard-led setup and a repo copy in your own GitHub account
-- Guided local setup with `pnpm setup` if you want the repo on disk and a scripted Wrangler flow
-- Manual Wrangler setup if you want to enter each step yourself
+- Local setup with a few explicit Wrangler helper commands if you want the repo on disk
 
 Use the local path for a more hands on deploy:
 
@@ -35,18 +34,11 @@ Use the local path for a more hands on deploy:
 git clone https://github.com/okikio/cloudflare-ddns.git
 cd cloudflare-ddns
 pnpm install
-pnpm setup
+pnpm setup:secrets
+pnpm run deploy
 ```
 
-The setup wizard will:
-
-- create or attach a D1 database
-- prompt for the required secrets
-- write the hostname allowlist into `wrangler.jsonc`
-- validate the worker configuration
-- offer to apply migrations and deploy immediately
-
-If you want the manual Wrangler flow instead, keep reading.
+If you want to attach a specific D1 database and run explicit remote migrations from a local clone, keep reading.
 
 ## Before you deploy
 
@@ -71,22 +63,7 @@ Deploy to Cloudflare can prefill descriptions and defaults, but it cannot curren
 
 ## Setup
 
-### Guided setup
-
-```sh
-pnpm setup
-```
-
-If you prefer to run the steps separately:
-
-```sh
-pnpm setup:db
-pnpm setup:secrets
-pnpm verify-setup
-pnpm run deploy
-```
-
-### Manual Wrangler setup
+### Local Wrangler setup
 
 ### 1. Clone and install
 
@@ -104,9 +81,9 @@ npx wrangler d1 create cloudflare-ddns-db
 
 If you want the database provisioned before the first deploy, copy the generated D1 binding back into your local `wrangler.jsonc`, or use `pnpm setup:db` to create the database and write that binding for you.
 
-If you skip this step, keep the committed `d1_databases` entry as-is. Wrangler can automatically provision the D1 database from that binding during `pnpm run deploy`, Workers Builds, or Deploy to Cloudflare.
+If you skip this step, keep the committed `d1_databases` entry as-is. Wrangler can automatically provision the D1 database from that binding during `pnpm run deploy`, Workers Builds, or Deploy to Cloudflare. This is the default template path.
 
-If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm run deploy` instead of `npx wrangler deploy`. This repository uses a pnpm workspace, so `pnpm deploy` runs pnpm's built-in workspace deploy command rather than the package script. `pnpm run deploy` is the form that runs this repository's `predeploy` step before `wrangler deploy`.
+If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm run deploy` instead of `npx wrangler deploy`. This repository uses a pnpm workspace, so `pnpm deploy` runs pnpm's built-in workspace deploy command rather than the package script. `pnpm run deploy` is the form that runs this repository's plain `wrangler deploy` script.
 
 ### 3. Set secrets
 
@@ -146,11 +123,22 @@ You can also use `pnpm setup:secrets`, which uploads the actual secrets and writ
 pnpm run deploy
 ```
 
-This runs D1 migrations automatically before deploying.
+This runs a standard `wrangler deploy`.
 
-On a first hosted deploy, Wrangler can auto-create the D1 database from the committed binding before applying remote migrations. If you already created the database up front with `pnpm setup:db` or `wrangler d1 create`, the same deploy command reuses that configured binding.
+For this repository's default template path, the Worker deploys without requiring a pre-existing D1 `database_id`. DDNS updates still work before the audit-log table exists, but D1-backed audit logging only becomes active after you apply the SQL migrations from a local/operator workflow.
 
 Workers Builds does not need a dedicated D1 build secret for this repository. Use the committed D1 binding and set the Deploy command to `pnpm run deploy`.
+
+If you want to manage the D1 database explicitly after cloning locally, run:
+
+```sh
+pnpm setup:db
+pnpm setup:secrets
+pnpm run migrate:remote
+pnpm run deploy
+```
+
+That path writes a real `database_id` into your local `wrangler.jsonc`, uploads the required secrets, applies the SQL migrations remotely, and then deploys the Worker. It is the recommended way to enable the D1-backed audit log.
 
 ## Environment variables
 
@@ -249,7 +237,7 @@ src/
   ddns.ts              Shared update logic (findRecord, compare, create/patch)
   cloudflare-api.ts    Typed wrapper around Cloudflare DNS REST API
   validation.ts        IP validation, config parsing (no dependencies)
-  logging.ts           D1-backed audit logging and cleanup
+  logging.ts           Best-effort D1 audit logging and cleanup
   endpoints/
     synology.ts        GET /nic/update  (DynDNS2 text responses)
     update.ts          POST /update     (JSON, OpenAPI via Chanfana)

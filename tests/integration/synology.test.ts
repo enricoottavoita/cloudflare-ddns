@@ -2,7 +2,7 @@ import { SELF } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createMockDnsApi, makeSynologyUrl } from "../helpers";
+import { createMockDnsApi, dropLogSchema, makeSynologyUrl } from "../helpers";
 
 const dns = createMockDnsApi();
 const DEFAULT_ALLOWED_HOSTNAMES = "nas.example.com,home.example.com";
@@ -168,6 +168,22 @@ describe("GET /nic/update — D1 logging", () => {
 		expect(results[0].ip).toBe("198.51.100.1");
 		expect(results[0].action).toBe("created");
 		expect(results[0].source).toBe("synology");
+	});
+
+	it("still updates DNS when the log table is missing", async () => {
+		await dropLogSchema(env.DB);
+
+		const response = await SELF.fetch(makeSynologyUrl({ myip: "198.51.100.25" }));
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe("good 198.51.100.25");
+
+		await new Promise((r) => setTimeout(r, 50));
+
+		const { results } = await env.DB.prepare(
+			"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'ddns_logs'",
+		).all();
+
+		expect(results).toHaveLength(0);
 	});
 });
 

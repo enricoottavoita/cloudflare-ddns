@@ -12,11 +12,6 @@ import {
 	writeWranglerConfig,
 } from "./common.ts";
 
-function extractDatabaseId(output: string): string | null {
-	const match = output.match(/"database_id"\s*:\s*"([0-9a-f-]{36})"/i);
-	return match?.[1] ?? null;
-}
-
 export async function setupDatabase(): Promise<string> {
 	const config = await readWranglerConfig();
 	const existingBinding = getPrimaryD1Binding(config);
@@ -32,31 +27,44 @@ export async function setupDatabase(): Promise<string> {
 
 	const defaultName = existingBinding?.database_name || `${config.name}-db`;
 	const databaseName = await prompt("D1 database name", { defaultValue: defaultName });
-	const output = runWrangler(["d1", "create", databaseName]);
-	const databaseId = extractDatabaseId(output);
+	const bindingName = existingBinding?.binding || "DB";
+	runWrangler([
+		"d1",
+		"create",
+		databaseName,
+		"--update-config",
+		"--binding",
+		bindingName,
+	], {
+		stdio: "inherit",
+	});
 
-	if (!databaseId) {
+	const updatedConfig = await readWranglerConfig();
+	const updatedBinding = getPrimaryD1Binding(updatedConfig);
+	const databaseId = updatedBinding?.database_id;
+
+	if (!databaseId || !isUuid(databaseId)) {
 		throw new Error(
-			`Wrangler created a database but the script could not find the database_id in the output.\n${output}`,
+			"Wrangler created a database, but the updated wrangler.jsonc does not contain a valid database_id. Check the D1 binding that Wrangler wrote to the config and try again.",
 		);
 	}
 
-	config.d1_databases = [
+	updatedConfig.d1_databases = [
 		{
-			binding: existingBinding?.binding || "DB",
+			binding: bindingName,
 			database_name: databaseName,
 			database_id: databaseId,
 		},
 	];
 
-	await writeWranglerConfig(config);
+	await writeWranglerConfig(updatedConfig);
 	console.log(`Updated wrangler.jsonc with D1 database ${databaseName} (${databaseId}).`);
 	return databaseId;
 }
 
 async function main(): Promise<void> {
 	await setupDatabase();
-	await outro("Next: run `pnpm setup:secrets` or `pnpm setup`.");
+	await outro("Next: run `pnpm setup:secrets`, `pnpm run migrate:remote`, or `pnpm run deploy`.");
 }
 
 if (isMainModule(import.meta.url)) {

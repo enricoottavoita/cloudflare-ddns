@@ -342,16 +342,6 @@ export async function info(message: string): Promise<void> {
 	console.log(message);
 }
 
-export function parseSecretList(output: string): RequiredSecret[] {
-	const schema = z.array(z.object({ name: z.enum(REQUIRED_SECRETS) }).catchall(z.unknown()));
-	const result = schema.safeParse(JSON.parse(output));
-	if (!result.success) {
-		return [];
-	}
-
-	return result.data.map((entry) => entry.name);
-}
-
 export function getRequiredVar(config: WranglerConfig, name: RequiredVar): string {
 	return config.vars?.[name]?.trim() ?? "";
 }
