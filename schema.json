@@ -42,6 +42,80 @@
         }
       }
     },
+    "/nic/update": {
+      "get": {
+        "tags": [
+          "DDNS"
+        ],
+        "summary": "Synology DynDNS2 update endpoint",
+        "description": "Plain-text DynDNS2-compatible endpoint for Synology DSM and similar clients. Returns text/plain responses such as `good <ip>`, `nochg <ip>`, `badauth`, `nohost`, or `911`.",
+        "operationId": "get_SynologyUpdateEndpoint",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Fully-qualified hostname to update, for example nas.example.com."
+            },
+            "required": false,
+            "description": "Fully-qualified hostname to update, for example nas.example.com.",
+            "name": "hostname",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP."
+            },
+            "required": false,
+            "description": "Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP.",
+            "name": "myip",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Unused by this worker, but included for Synology DynDNS2 compatibility."
+            },
+            "required": false,
+            "description": "Unused by this worker, but included for Synology DynDNS2 compatibility.",
+            "name": "username",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Shared secret used to authenticate the update request."
+            },
+            "required": false,
+            "description": "Shared secret used to authenticate the update request.",
+            "name": "password",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "DynDNS2 plain-text status response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server-side error returned as DynDNS2 status text",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/update": {
       "post": {
         "tags": [

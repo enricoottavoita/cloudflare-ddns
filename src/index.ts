@@ -6,7 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { HealthEndpoint } from "./endpoints/health";
-import { handleSynologyUpdate } from "./endpoints/synology";
+import { SynologyUpdateEndpoint } from "./endpoints/synology";
 import { UpdateEndpoint } from "./endpoints/update";
 import { cleanupLogs } from "./logging";
 
@@ -32,10 +32,7 @@ app.onError((err, c) => {
 	return c.json({ success: false, errors: [{ code: 7000, message: "Internal Server Error" }] }, 500);
 });
 
-// Plain Hono route (DynDNS2 text responses, not suited for OpenAPI).
-app.get("/nic/update", handleSynologyUpdate);
-
-// Chanfana OpenAPI routes (JSON, auto-documented).
+// Chanfana OpenAPI routes.
 const openapi = fromHono(app, {
 	docs_url: "/",
 	schema: {
@@ -51,6 +48,7 @@ const openapi = fromHono(app, {
 });
 
 openapi.get("/health", HealthEndpoint);
+openapi.get("/nic/update", SynologyUpdateEndpoint);
 openapi.post("/update", UpdateEndpoint);
 
 // ---------------------------------------------------------------------------

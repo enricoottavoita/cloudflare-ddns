@@ -13,11 +13,29 @@
  * parse: `good <ip>`, `nochg <ip>`, `badauth`, `nohost`, or `911`.
  */
 
+import { OpenAPIRoute } from "chanfana";
 import type { AppContext, DdnsEnv } from "../types";
 import { DDNS_RESPONSE, UPDATE_ACTION } from "../types";
 import { performDdnsUpdates } from "../ddns";
 import { logUpdate } from "../logging";
 import { isIpv4, isIpv6, parseAllowedHostnames, resolveUpdateHostnames } from "../validation";
+import { z } from "zod";
+
+const SynologyQuery = z.object({
+	hostname: z
+		.string()
+		.optional()
+		.describe("Fully-qualified hostname to update, for example nas.example.com."),
+	myip: z
+		.string()
+		.optional()
+		.describe("Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP."),
+	username: z
+		.string()
+		.optional()
+		.describe("Unused by this worker, but included for Synology DynDNS2 compatibility."),
+	password: z.string().optional().describe("Shared secret used to authenticate the update request."),
+});
 
 /**
  * Pick the best available IP address.
@@ -51,63 +69,97 @@ function ddns(body: string, status = 200): Response {
  * https://<worker>.workers.dev/nic/update?hostname=__HOSTNAME__&myip=__MYIP__&username=__USERNAME__&password=__PASSWORD__
  * ```
  */
-export async function handleSynologyUpdate(c: AppContext): Promise<Response> {
-	const env: DdnsEnv = c.env;
 
-	try {
-		const hostname = (c.req.query("hostname") ?? "").trim().toLowerCase();
-		const myip = (c.req.query("myip") ?? "").trim();
-		const password = (c.req.query("password") ?? "").trim();
+export class SynologyUpdateEndpoint extends OpenAPIRoute {
+	schema = {
+		tags: ["DDNS"],
+		summary: "Synology DynDNS2 update endpoint",
+		description:
+			"Plain-text DynDNS2-compatible endpoint for Synology DSM and similar clients. " +
+			"Returns text/plain responses such as `good <ip>`, `nochg <ip>`, `badauth`, `nohost`, or `911`.",
+		request: {
+			query: SynologyQuery,
+		},
+		responses: {
+			"200": {
+				description: "DynDNS2 plain-text status response",
+				content: {
+					"text/plain": {
+						schema: z.string(),
+					},
+				},
+			},
+			"500": {
+				description: "Server-side error returned as DynDNS2 status text",
+				content: {
+					"text/plain": {
+						schema: z.string(),
+					},
+				},
+			},
+		},
+	};
 
-		// Authentication: shared secret must match.
-		if (!password || password !== env.DDNS_SHARED_SECRET) {
-			return ddns(DDNS_RESPONSE.BADAUTH);
-		}
+	async handle(c: AppContext): Promise<Response> {
+		const env: DdnsEnv = c.env;
 
-		// Hostname must be in the allowed list.
-		const allowed = parseAllowedHostnames(env.DDNS_ALLOWED_HOSTNAMES);
-		const targetHostnames = resolveUpdateHostnames(hostname, allowed);
-		if (!hostname || targetHostnames.length === 0) {
-			return ddns(DDNS_RESPONSE.NOHOST);
-		}
+		try {
+			const data = await this.getValidatedData<typeof this.schema>();
+			const query = data.query as z.infer<typeof SynologyQuery>;
+			const hostname = (query.hostname ?? "").trim().toLowerCase();
+			const myip = (query.myip ?? "").trim();
+			const password = (query.password ?? "").trim();
 
-		// Resolve the client IP: prefer the explicit myip param, fall back to
-		// CF-Connecting-IP from the TCP connection.
-		const ip = pickIp(myip || null, c.req.header("CF-Connecting-IP") ?? null);
-		if (!ip) {
-			return ddns(DDNS_RESPONSE.SERVER_ERROR, 500);
-		}
+			// Authentication: shared secret must match.
+			if (!password || password !== env.DDNS_SHARED_SECRET) {
+				return ddns(DDNS_RESPONSE.BADAUTH);
+			}
 
-		const result = await performDdnsUpdates(env, targetHostnames, ip);
+			// Hostname must be in the allowed list.
+			const allowed = parseAllowedHostnames(env.DDNS_ALLOWED_HOSTNAMES);
+			const targetHostnames = resolveUpdateHostnames(hostname, allowed);
+			if (!hostname || targetHostnames.length === 0) {
+				return ddns(DDNS_RESPONSE.NOHOST);
+			}
 
-		// Log the outcome (fire-and-forget via waitUntil so the response
-		// is not delayed by D1 writes).
-		c.executionCtx.waitUntil(
-			Promise.all(
-				result.results.map((targetResult) =>
-					logUpdate(env.DB, {
-						hostname: targetResult.hostname,
-						record_type: targetResult.record_type,
-						ip: targetResult.ip,
-						action: targetResult.action,
-						error_message:
-							targetResult.action === UPDATE_ACTION.ERROR ? targetResult.message : null,
-						source: "synology",
-					}),
+			// Resolve the client IP: prefer the explicit myip param, fall back to
+			// CF-Connecting-IP from the TCP connection.
+			const ip = pickIp(myip || null, c.req.header("CF-Connecting-IP") ?? null);
+			if (!ip) {
+				return ddns(DDNS_RESPONSE.SERVER_ERROR, 500);
+			}
+
+			const result = await performDdnsUpdates(env, targetHostnames, ip);
+
+			// Log the outcome (fire-and-forget via waitUntil so the response
+			// is not delayed by D1 writes).
+			c.executionCtx.waitUntil(
+				Promise.all(
+					result.results.map((targetResult) =>
+						logUpdate(env.DB, {
+							hostname: targetResult.hostname,
+							record_type: targetResult.record_type,
+							ip: targetResult.ip,
+							action: targetResult.action,
+							error_message:
+								targetResult.action === UPDATE_ACTION.ERROR ? targetResult.message : null,
+							source: "synology",
+						}),
+					),
 				),
-			),
-		);
+			);
 
-		if (result.action === UPDATE_ACTION.ERROR) {
+			if (result.action === UPDATE_ACTION.ERROR) {
+				return ddns(DDNS_RESPONSE.SERVER_ERROR, 500);
+			}
+
+			if (result.action === UPDATE_ACTION.NOOP) {
+				return ddns(`${DDNS_RESPONSE.NOCHG} ${ip}`);
+			}
+
+			return ddns(`${DDNS_RESPONSE.GOOD} ${ip}`);
+		} catch {
 			return ddns(DDNS_RESPONSE.SERVER_ERROR, 500);
 		}
-
-		if (result.action === UPDATE_ACTION.NOOP) {
-			return ddns(`${DDNS_RESPONSE.NOCHG} ${ip}`);
-		}
-
-		return ddns(`${DDNS_RESPONSE.GOOD} ${ip}`);
-	} catch {
-		return ddns(DDNS_RESPONSE.SERVER_ERROR, 500);
 	}
 }
