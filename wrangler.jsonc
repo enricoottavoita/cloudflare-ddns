@@ -23,9 +23,17 @@
 		{
 			"binding": "DB",
 			"database_name": "cloudflare-ddns-db",
-			"database_id": "19e90a1f-00f3-4969-b078-4686a9e296cf"
+			"database_id": "00000000-0000-0000-0000-000000000000"
 		}
 	],
+	"secrets": {
+		"required": [
+			"CF_API_TOKEN",
+			"CF_ZONE_ID",
+			"DDNS_SHARED_SECRET",
+			"DDNS_ALLOWED_HOSTNAMES"
+		]
+	},
 	"vars": {
 		"DDNS_PROXIED": "false",
 		"DDNS_TTL": "1",
