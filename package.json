@@ -36,13 +36,13 @@
 	"cloudflare": {
 		"bindings": {
 			"CF_API_TOKEN": {
-				"description": "Cloudflare API token with Zone > DNS > Edit permission for the zone this worker will update."
+				"description": "Cloudflare API token with Zone > DNS > Edit permission for the zone this worker will update. In the Cloudflare dashboard, start from the Edit Zone DNS template and scope it to one zone."
 			},
 			"CF_ZONE_ID": {
-				"description": "Zone ID from your domain overview page in the Cloudflare dashboard."
+				"description": "Zone ID from your domain Overview page in the Cloudflare dashboard. Cloudflare shows it in the API section on the right side."
 			},
 			"DDNS_SHARED_SECRET": {
-				"description": "Long random password used by Synology or other clients to authenticate update requests."
+				"description": "Long random password used by Synology or other clients to authenticate update requests. Use at least 32 random characters."
 			},
 			"DDNS_ALLOWED_HOSTNAMES": {
 				"description": "Comma-separated allowlist of DNS names this worker may update, for example nas.example.com,*.nas.example.com."

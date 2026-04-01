@@ -10,7 +10,7 @@ When your NAS or a cron script calls this worker, it reads the caller's IP from 
 ![Synology DSM DDNS settings showing a custom Cloudflare provider using a Cloudflare Worker /nic/update DynDNS2 URL with hostname, IP, username, and password fields.](assets/synology-ddns-dashboard.png)
 
 > [!NOTE]
-> Use Deploy to Cloudflare if you want Cloudflare to create your own copy of the repo, provision supported resources such as D1, and build the Worker for you. Keep your zone-specific values ready before you start: the setup flow still needs your Cloudflare API token, zone ID, shared secret, and allowed hostnames.
+> Use Deploy to Cloudflare if you want Cloudflare to create your own copy of the repo, provision supported resources such as D1, and build the Worker for you. Keep your zone-specific values ready before you start: the setup flow still needs your Cloudflare API token, zone ID, shared secret, and allowed hostnames. The helper links below are the fastest way to gather them.
 
 ## Features
 
@@ -48,12 +48,25 @@ The setup wizard will:
 
 If you want the manual Wrangler flow instead, keep reading.
 
+## Before you deploy
+
+If you want the easiest Deploy to Cloudflare path, open these in separate tabs before you press the button:
+
+- [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) for Cloudflare's normal token flow. Choose the `Edit Zone DNS` template, then restrict it to the one zone you want this worker to manage.
+- [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) if you want Cloudflare's list of built-in templates and their default permissions.
+- [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/) if you do not already know where Cloudflare shows the zone ID.
+- [1Password password generator](https://1password.com/password-generator/) or [Bitwarden password generator](https://bitwarden.com/password-generator/) if you want a browser-based shared secret generator from a reputable password-manager vendor.
+
+You will still need to choose the hostnames this worker may update, for example `nas.example.com,*.nas.example.com`.
+
+Deploy to Cloudflare can prefill descriptions and defaults, but it cannot currently give you a zone picker or generate the shared secret inside the form. The most reliable path is Cloudflare's built-in `Edit Zone DNS` token template plus these lookup links.
+
 ## Prerequisites
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier works)
 - A domain with its DNS managed by Cloudflare
-- A [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with **Zone > DNS > Edit** permission for your zone
-- Your zone ID from the domain overview page in the Cloudflare dashboard
+- A [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with **Zone > DNS > Edit** permission for your zone. The easiest way to create one is Cloudflare's [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) flow using the `Edit Zone DNS` template.
+- Your zone ID from the domain overview page in the Cloudflare dashboard. Cloudflare documents the lookup flow in [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/).
 - [Node.js](https://nodejs.org/) 22+ and [pnpm](https://pnpm.io/) 9+
 
 ## Setup
@@ -103,9 +116,9 @@ You can also use `pnpm setup:secrets`, which prompts for the values and uploads 
 
 | Secret | Description |
 |---|---|
-| `CF_API_TOKEN` | Cloudflare API token with DNS:Edit for your zone |
-| `CF_ZONE_ID` | Zone ID (visible on your domain's overview page in the dashboard) |
-| `DDNS_SHARED_SECRET` | A password you choose. Callers must send this to authenticate. |
+| `CF_API_TOKEN` | Cloudflare API token with DNS:Edit for your zone. The easiest starting point is Cloudflare's [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) flow using the `Edit Zone DNS` template. |
+| `CF_ZONE_ID` | Zone ID from your domain Overview page. If you do not know where to look, use [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/). |
+| `DDNS_SHARED_SECRET` | A password you choose. Callers must send this to authenticate. Use at least 32 random characters. |
 The repository includes [`.env.production.example`](./.env.production.example) so the manual upload path has a ready-made template.
 
 ### 4. Configure allowed hostnames
