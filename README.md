@@ -1,8 +1,16 @@
 # Cloudflare DDNS
 
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/okikio/cloudflare-ddns)
+
 A Cloudflare Worker that keeps DNS records in sync with your changing public IP address. Designed for Synology NAS devices but works with any HTTP client.
 
 When your NAS or a cron script calls this worker, it reads the caller's IP from the request, compares it to the existing Cloudflare DNS record, and creates or patches the record if needed. Responses follow the DynDNS2 protocol so Synology DSM recognizes them natively.
+
+![Synology DSM DDNS settings showing a custom Cloudflare provider using a Cloudflare Worker /nic/update DynDNS2 URL with hostname, IP, username, and password fields.](assets/synology-ddns-dashboard.png)
+
+> [!NOTE]
+> Use Deploy to Cloudflare if you want Cloudflare to create your own copy of the repo, provision supported resources such as D1, and build the Worker for you. Keep your zone-specific values ready before you start: the setup flow still needs your Cloudflare API token, zone ID, shared secret, and allowed hostnames.
 
 ## Features
 
@@ -13,14 +21,58 @@ When your NAS or a cron script calls this worker, it reads the caller's IP from 
 - Hostname allowlist to limit what records can be changed
 - Configurable proxied/DNS-only mode and TTL
 
+## Quick start
+
+Choose the path that matches how you want to manage the project:
+
+- Deploy to Cloudflare for a dashboard-led setup and a repo copy in your own GitHub account
+- Guided local setup with `pnpm setup` if you want the repo on disk and a scripted Wrangler flow
+- Manual Wrangler setup if you want to enter each step yourself
+
+Use the local path for a more hands on deploy:
+
+```sh
+git clone https://github.com/okikio/cloudflare-ddns.git
+cd cloudflare-ddns
+pnpm install
+pnpm setup
+```
+
+The setup wizard will:
+
+- create or attach a D1 database
+- prompt for the required secrets
+- validate the worker configuration
+- offer to apply migrations and deploy immediately
+
+If you want the manual Wrangler flow instead, keep reading.
+
 ## Prerequisites
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier works)
 - A domain with its DNS managed by Cloudflare
 - A [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with **Zone > DNS > Edit** permission for your zone
-- [Node.js](https://nodejs.org/) 18+ and [pnpm](https://pnpm.io/)
+- Your zone ID from the domain overview page in the Cloudflare dashboard
+- [Node.js](https://nodejs.org/) 22+ and [pnpm](https://pnpm.io/) 9+
 
 ## Setup
+
+### Guided setup
+
+```sh
+pnpm setup
+```
+
+If you prefer to run the steps separately:
+
+```sh
+pnpm setup:db
+pnpm setup:secrets
+pnpm verify-setup
+pnpm deploy
+```
+
+### Manual Wrangler setup
 
 ### 1. Clone and install
 
@@ -36,16 +88,17 @@ pnpm install
 npx wrangler d1 create cloudflare-ddns-db
 ```
 
-Copy the `database_id` from the output and paste it into `wrangler.jsonc` replacing the placeholder `00000000-0000-0000-0000-000000000000`.
+Copy the `database_id` from the output and paste it into `wrangler.jsonc` replacing the placeholder `00000000-0000-0000-0000-000000000000`, or use `pnpm setup:db` to do that for you.
 
 ### 3. Set secrets
 
 ```sh
-npx wrangler secret put CF_API_TOKEN
-npx wrangler secret put CF_ZONE_ID
-npx wrangler secret put DDNS_SHARED_SECRET
-npx wrangler secret put DDNS_ALLOWED_HOSTNAMES
+cp .env.production.example .env.production
+# edit .env.production with your real values
+npx wrangler secret bulk .env.production
 ```
+
+You can also use `pnpm setup:secrets`, which prompts for the values and uploads them safely in one pass.
 
 | Secret | Description |
 |---|---|
@@ -53,6 +106,8 @@ npx wrangler secret put DDNS_ALLOWED_HOSTNAMES
 | `CF_ZONE_ID` | Zone ID (visible on your domain's overview page in the dashboard) |
 | `DDNS_SHARED_SECRET` | A password you choose. Callers must send this to authenticate. |
 | `DDNS_ALLOWED_HOSTNAMES` | Comma-separated hostnames this worker may update, e.g. `nas.example.com,home.example.com`. Wildcard companions such as `*.nas.example.com` are supported as explicit entries. |
+
+The repository includes [`.env.production.example`](./.env.production.example) so the manual upload path has a ready-made template.
 
 ### 4. Deploy
 
@@ -75,6 +130,8 @@ These non-secret variables have defaults in `wrangler.jsonc` and can be overridd
 ## Usage
 
 ### Synology DSM
+
+If you want a screenshot-led DSM walkthrough for non-technical users, use [docs/synology-setup.md](docs/synology-setup.md).
 
 In **Control Panel > External Access > DDNS > Customize**:
 
@@ -123,6 +180,11 @@ GET /health  ->  {"ok": true}
 pnpm dev     # starts wrangler dev with local D1 migrations
 pnpm test    # runs vitest with Miniflare
 ```
+
+## Continuous integration
+
+GitHub Actions runs `pnpm test` for pull requests and pushes to `main` on Node.js 22 and 24.
+Dependabot checks the workflow action references weekly so the CI setup stays current.
 
 ## How it works
 
