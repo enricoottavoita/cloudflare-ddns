@@ -7,10 +7,12 @@ import {
 	ensureWranglerAuth,
 	generatedSharedSecret,
 	isMainModule,
-	printHeading,
 	prompt,
 	readWranglerConfig,
 	runWrangler,
+	step,
+	outro,
+	writeWranglerConfig,
 	validateAllowedHostnamesCsv,
 	validateRequiredText,
 	validateSharedSecret,
@@ -23,7 +25,7 @@ async function promptUntilValid(
 	defaultValue?: string,
 ): Promise<string> {
 	while (true) {
-		const answer = await prompt(question, { defaultValue });
+		const answer = await prompt(question, { defaultValue, validate });
 		const error = validate(answer);
 		if (!error) return answer;
 		console.error(error);
@@ -38,7 +40,7 @@ export async function setupSecrets(): Promise<{
 }> {
 	const config = await readWranglerConfig();
 	ensureWranglerAuth();
-	printHeading(`Secret setup for ${config.name}`);
+	await step(`Secret setup for ${config.name}`);
 
 	const apiToken = await promptUntilValid(
 		"Cloudflare API token",
@@ -68,8 +70,13 @@ export async function setupSecrets(): Promise<{
 		`CF_API_TOKEN=${apiToken}`,
 		`CF_ZONE_ID=${zoneId}`,
 		`DDNS_SHARED_SECRET=${sharedSecret}`,
-		`DDNS_ALLOWED_HOSTNAMES=${allowedHostnames}`,
 	].join("\n");
+
+	config.vars = {
+		...(config.vars || {}),
+		DDNS_ALLOWED_HOSTNAMES: allowedHostnames,
+	};
+	await writeWranglerConfig(config);
 
 	await fs.writeFile(tempFile, envText, "utf8");
 	try {
@@ -78,13 +85,13 @@ export async function setupSecrets(): Promise<{
 		await fs.rm(tempFile, { force: true });
 	}
 
-	console.log(`Uploaded ${REQUIRED_SECRETS.length} required secrets.`);
+	console.log(`Uploaded ${REQUIRED_SECRETS.length} required secrets and updated DDNS_ALLOWED_HOSTNAMES in wrangler.jsonc.`);
 	return { apiToken, zoneId, sharedSecret, allowedHostnames };
 }
 
 async function main(): Promise<void> {
 	await setupSecrets();
-	console.log("Next: run `pnpm verify-setup` or `pnpm setup`.");
+	await outro("Next: run `pnpm verify-setup` or `pnpm setup`.");
 }
 
 if (isMainModule(import.meta.url)) {

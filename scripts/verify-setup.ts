@@ -1,5 +1,6 @@
 import {
 	REQUIRED_SECRETS,
+	getRequiredVar,
 	getPrimaryD1Binding,
 	isMainModule,
 	isPlaceholderDatabaseId,
@@ -7,6 +8,8 @@ import {
 	parseSecretList,
 	readWranglerConfig,
 	runWrangler,
+	success,
+	validateAllowedHostnamesCsv,
 } from "./common.ts";
 
 function missingRequiredSecrets(config: Awaited<ReturnType<typeof readWranglerConfig>>): string[] {
@@ -29,6 +32,14 @@ export async function verifySetup(): Promise<boolean> {
 	if (missingSecretsConfig.length > 0) {
 		errors.push(
 			`wrangler.jsonc is missing required secret declarations for: ${missingSecretsConfig.join(", ")}`,
+		);
+	}
+
+	const allowedHostnames = getRequiredVar(config, "DDNS_ALLOWED_HOSTNAMES");
+	const allowedHostnameValidation = validateAllowedHostnamesCsv(allowedHostnames);
+	if (!allowedHostnameValidation.ok) {
+		errors.push(
+			`wrangler.jsonc vars.DDNS_ALLOWED_HOSTNAMES is missing or invalid.\n${allowedHostnameValidation.errors.join("\n")}`,
 		);
 	}
 
@@ -55,7 +66,7 @@ export async function verifySetup(): Promise<boolean> {
 		throw new Error(errors.join("\n\n"));
 	}
 
-	console.log(`Setup looks good for Worker ${config.name}.`);
+	await success(`Setup looks good for Worker ${config.name}.`);
 	return true;
 }
 

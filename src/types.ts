@@ -4,7 +4,8 @@ import type { Context } from "hono";
  * Worker environment bindings.
  *
  * Secrets (`CF_API_TOKEN`, `CF_ZONE_ID`, `DDNS_SHARED_SECRET`) are set via
- * `wrangler secret put`. Non-secret defaults live in `wrangler.jsonc` `[vars]`.
+ * `wrangler secret put`. Non-secret runtime configuration such as
+ * `DDNS_ALLOWED_HOSTNAMES` lives in `wrangler.jsonc` `vars`.
  *
  * The generated `worker-configuration.d.ts` provides the global `Env` with
  * the D1 binding. This interface extends it with the DDNS-specific variables
@@ -19,7 +20,8 @@ export interface DdnsEnv extends Env {
 	DDNS_SHARED_SECRET: string;
 	/**
 	 * Comma-separated list of hostnames this worker is allowed to update.
-	 * Prevents a leaked secret from modifying arbitrary zone records.
+	 * This is ordinary config, not a secret, because it is an allowlist rather
+	 * than a credential.
 	 *
 	 * @example "nas.example.com,home.example.com"
 	 */

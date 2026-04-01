@@ -5,14 +5,24 @@ import { randomBytes } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import {
+	cancel as clackCancel,
+	confirm as clackConfirm,
+	intro as clackIntro,
+	isCancel as clackIsCancel,
+	log as clackLog,
+	outro as clackOutro,
+	text as clackText,
+} from "@clack/prompts";
 import { z } from "zod";
 
 export const REQUIRED_SECRETS = [
 	"CF_API_TOKEN",
 	"CF_ZONE_ID",
 	"DDNS_SHARED_SECRET",
-	"DDNS_ALLOWED_HOSTNAMES",
 ] as const;
+
+export const REQUIRED_VARS = ["DDNS_ALLOWED_HOSTNAMES"] as const;
 
 export const PLACEHOLDER_DATABASE_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -24,6 +34,7 @@ const sharedSecretSchema = z
 	.min(12, "Use a longer DDNS_SHARED_SECRET. At least 12 characters is recommended.");
 
 type RequiredSecret = (typeof REQUIRED_SECRETS)[number];
+type RequiredVar = (typeof REQUIRED_VARS)[number];
 
 export interface WranglerD1Binding {
 	binding: string;
@@ -50,6 +61,8 @@ interface WranglerResultOptions {
 
 interface PromptOptions {
 	defaultValue?: string;
+	placeholder?: string;
+	validate?: (value: string) => string | undefined;
 }
 
 export interface HostnameValidationResult {
@@ -60,6 +73,17 @@ export interface HostnameValidationResult {
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wranglerConfigPath = path.join(projectRoot, "wrangler.jsonc");
+
+function shouldUseClackUi(): boolean {
+	return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+function handleClackCancel(value: unknown): void {
+	if (clackIsCancel(value)) {
+		clackCancel("Operation cancelled.");
+		process.exit(0);
+	}
+}
 
 function stripJsonComments(input: string): string {
 	return input.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -223,6 +247,19 @@ export function ensureWranglerAuth(): void {
 }
 
 export async function prompt(question: string, options: PromptOptions = {}): Promise<string> {
+	if (shouldUseClackUi()) {
+		const answer = await clackText({
+			message: question,
+			initialValue: options.defaultValue,
+			placeholder: options.placeholder,
+			validate: options.validate,
+		});
+
+		handleClackCancel(answer);
+
+		return String(answer).trim();
+	}
+
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
 	try {
 		const suffix = options.defaultValue ? ` [${options.defaultValue}]` : "";
@@ -237,6 +274,17 @@ export async function prompt(question: string, options: PromptOptions = {}): Pro
 }
 
 export async function promptYesNo(question: string, defaultValue = true): Promise<boolean> {
+	if (shouldUseClackUi()) {
+		const answer = await clackConfirm({
+			message: question,
+			initialValue: defaultValue,
+		});
+
+		handleClackCancel(answer);
+
+		return Boolean(answer);
+	}
+
 	const hint = defaultValue ? "Y/n" : "y/N";
 	const answer = (await prompt(`${question} (${hint})`)).toLowerCase();
 	if (!answer) return defaultValue;
@@ -253,6 +301,51 @@ export function printHeading(title: string): void {
 	console.log(`\n== ${title} ==`);
 }
 
+export async function intro(title: string): Promise<void> {
+	if (shouldUseClackUi()) {
+		clackIntro(title);
+		return;
+	}
+
+	printHeading(title);
+}
+
+export async function outro(message: string): Promise<void> {
+	if (shouldUseClackUi()) {
+		clackOutro(message);
+		return;
+	}
+
+	console.log(message);
+}
+
+export async function step(message: string): Promise<void> {
+	if (shouldUseClackUi()) {
+		clackLog.step(message);
+		return;
+	}
+
+	printHeading(message);
+}
+
+export async function success(message: string): Promise<void> {
+	if (shouldUseClackUi()) {
+		clackLog.success(message);
+		return;
+	}
+
+	console.log(message);
+}
+
+export async function info(message: string): Promise<void> {
+	if (shouldUseClackUi()) {
+		clackLog.info(message);
+		return;
+	}
+
+	console.log(message);
+}
+
 export function parseSecretList(output: string): RequiredSecret[] {
 	const schema = z.array(z.object({ name: z.enum(REQUIRED_SECRETS) }).catchall(z.unknown()));
 	const result = schema.safeParse(JSON.parse(output));
@@ -261,4 +354,8 @@ export function parseSecretList(output: string): RequiredSecret[] {
 	}
 
 	return result.data.map((entry) => entry.name);
+}
+
+export function getRequiredVar(config: WranglerConfig, name: RequiredVar): string {
+	return config.vars?.[name]?.trim() ?? "";
 }

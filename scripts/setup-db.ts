@@ -1,13 +1,15 @@
 import {
 	ensureWranglerAuth,
 	getPrimaryD1Binding,
+	info,
 	isMainModule,
 	isPlaceholderDatabaseId,
 	isUuid,
-	printHeading,
 	prompt,
 	readWranglerConfig,
 	runWrangler,
+	step,
+	outro,
 	writeWranglerConfig,
 } from "./common.ts";
 
@@ -22,12 +24,12 @@ export async function setupDatabase(): Promise<string> {
 	const existingId = existingBinding?.database_id;
 
 	if (existingId && isUuid(existingId) && !isPlaceholderDatabaseId(existingId)) {
-		console.log(`D1 database is already configured: ${existingBinding.database_name} (${existingId})`);
+		await info(`D1 database is already configured: ${existingBinding.database_name} (${existingId})`);
 		return existingId;
 	}
 
 	ensureWranglerAuth();
-	printHeading("D1 database setup");
+	await step("D1 database setup");
 
 	const defaultName = existingBinding?.database_name || `${config.name}-db`;
 	const databaseName = await prompt("D1 database name", { defaultValue: defaultName });
@@ -55,7 +57,7 @@ export async function setupDatabase(): Promise<string> {
 
 async function main(): Promise<void> {
 	await setupDatabase();
-	console.log("Next: run `pnpm setup:secrets` or `pnpm setup`.");
+	await outro("Next: run `pnpm setup:secrets` or `pnpm setup`.");
 }
 
 if (isMainModule(import.meta.url)) {

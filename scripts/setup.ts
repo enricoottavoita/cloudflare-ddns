@@ -1,4 +1,4 @@
-import { isMainModule, printHeading, promptYesNo, runWrangler, ensureWranglerAuth } from "./common.ts";
+import { ensureWranglerAuth, intro, isMainModule, outro, promptYesNo, runWrangler, step } from "./common.ts";
 import { setupDatabase } from "./setup-db.ts";
 import { setupSecrets } from "./setup-secrets.ts";
 import { verifySetup } from "./verify-setup.ts";
@@ -8,7 +8,7 @@ interface SetupProjectOptions {
 }
 
 export async function setupProject(options: SetupProjectOptions = {}): Promise<void> {
-	printHeading("Cloudflare DDNS setup");
+	await intro("Cloudflare DDNS setup");
 	ensureWranglerAuth();
 
 	await setupDatabase();
@@ -17,16 +17,16 @@ export async function setupProject(options: SetupProjectOptions = {}): Promise<v
 
 	const shouldDeploy = options.deployNow ?? (await promptYesNo("Run remote migrations and deploy now?", true));
 	if (!shouldDeploy) {
-		console.log("Setup complete. Run `pnpm deploy` when you are ready.");
+		await outro("Setup complete. Run `pnpm deploy` when you are ready.");
 		return;
 	}
 
-	printHeading("Applying migrations");
+	await step("Applying migrations");
 	runWrangler(["d1", "migrations", "apply", "DB", "--remote"], { stdio: "inherit" });
 
-	printHeading("Deploying Worker");
+	await step("Deploying Worker");
 	runWrangler(["deploy"], { stdio: "inherit" });
-	console.log("Deployment complete.");
+	await outro("Deployment complete.");
 }
 
 async function main(): Promise<void> {
