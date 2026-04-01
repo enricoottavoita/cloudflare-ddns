@@ -24,17 +24,17 @@ import { z } from "zod";
 const SynologyQuery = z.object({
 	hostname: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("Fully-qualified hostname to update, for example nas.example.com."),
 	myip: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP."),
 	username: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("Unused by this worker, but included for Synology DynDNS2 compatibility."),
-	password: z.string().optional().describe("Shared secret used to authenticate the update request."),
+	password: z.string().nullish().describe("Shared secret used to authenticate the update request."),
 });
 
 /**

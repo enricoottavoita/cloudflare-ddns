@@ -54,6 +54,7 @@
           {
             "schema": {
               "type": "string",
+              "nullable": true,
               "description": "Fully-qualified hostname to update, for example nas.example.com."
             },
             "required": false,
@@ -64,6 +65,7 @@
           {
             "schema": {
               "type": "string",
+              "nullable": true,
               "description": "Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP."
             },
             "required": false,
@@ -74,6 +76,7 @@
           {
             "schema": {
               "type": "string",
+              "nullable": true,
               "description": "Unused by this worker, but included for Synology DynDNS2 compatibility."
             },
             "required": false,
@@ -84,6 +87,7 @@
           {
             "schema": {
               "type": "string",
+              "nullable": true,
               "description": "Shared secret used to authenticate the update request."
             },
             "required": false,
