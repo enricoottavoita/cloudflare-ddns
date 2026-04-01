@@ -2,10 +2,22 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "cloudflare-ddns",
 	"main": "src/index.ts",
-	"compatibility_date": "2026-03-31",
+	"compatibility_date": "2026-04-01",
 	"upload_source_maps": true,
 	"observability": {
-		"enabled": true
+		"enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
 	},
 	"d1_databases": [
 		{
