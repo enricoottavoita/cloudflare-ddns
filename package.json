@@ -2,6 +2,10 @@
 	"name": "cloudflare-ddns",
 	"description": "Cloudflare Worker that acts as a DDNS provider for Synology NAS and other clients.",
 	"private": true,
+	"engines": {
+		"node": ">=22",
+		"pnpm": ">=9"
+	},
 	"dependencies": {
 		"chanfana": "^3.3.0",
 		"cloudflare": "^5.2.0",
@@ -17,8 +21,12 @@
 	},
 	"scripts": {
 		"cf-typegen": "wrangler types",
+		"setup": "node ./scripts/setup.mjs",
+		"setup:db": "node ./scripts/setup-db.mjs",
+		"setup:secrets": "node ./scripts/setup-secrets.mjs",
+		"verify-setup": "node ./scripts/verify-setup.mjs",
 		"deploy": "wrangler deploy",
-		"predeploy": "wrangler d1 migrations apply DB --remote",
+		"predeploy": "node ./scripts/verify-setup.mjs && wrangler d1 migrations apply DB --remote",
 		"dev": "wrangler d1 migrations apply DB --local && wrangler dev",
 		"test": "wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
 	}
