@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import process from "node:process";
+
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createInterface } from "node:readline/promises";
@@ -25,6 +27,8 @@ export const REQUIRED_SECRETS = [
 export const REQUIRED_VARS = ["DDNS_ALLOWED_HOSTNAMES"] as const;
 
 export const PLACEHOLDER_DATABASE_ID = "00000000-0000-0000-0000-000000000000";
+export const D1_DATABASE_ID_ENV = "D1_DATABASE_ID";
+export const D1_DATABASE_NAME_ENV = "D1_DATABASE_NAME";
 
 const uuidSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const zoneIdSchema = z.string().regex(/^[0-9a-f]{32}$/i, "CF_ZONE_ID should be a 32-character hexadecimal zone ID.");
@@ -358,4 +362,8 @@ export function parseSecretList(output: string): RequiredSecret[] {
 
 export function getRequiredVar(config: WranglerConfig, name: RequiredVar): string {
 	return config.vars?.[name]?.trim() ?? "";
+}
+
+export function getOptionalEnvVar(name: string): string {
+	return process.env[name]?.trim() ?? "";
 }

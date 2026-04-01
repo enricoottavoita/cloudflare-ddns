@@ -25,7 +25,9 @@ export async function verifySetup(): Promise<boolean> {
 	if (!binding) {
 		errors.push("Missing D1 binding `DB` in wrangler.jsonc.");
 	} else if (!binding.database_id || !isUuid(binding.database_id) || isPlaceholderDatabaseId(binding.database_id)) {
-		errors.push("D1 database_id is missing or still set to the placeholder. Run `pnpm setup:db`.");
+		errors.push(
+			"D1 database_id is missing or still set to the placeholder. Run `pnpm setup:db`, or set D1_DATABASE_ID before automated deploys.",
+		);
 	}
 
 	const missingSecretsConfig = missingRequiredSecrets(config);
