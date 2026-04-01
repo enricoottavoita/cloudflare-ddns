@@ -102,15 +102,9 @@ pnpm install
 npx wrangler d1 create cloudflare-ddns-db
 ```
 
-Copy the `database_id` from the output and paste it into `wrangler.jsonc` replacing the placeholder `00000000-0000-0000-0000-000000000000`, or use `pnpm setup:db` to do that for you.
+If you want the database provisioned before the first deploy, copy the generated D1 binding back into your local `wrangler.jsonc`, or use `pnpm setup:db` to create the database and write that binding for you.
 
-If you deploy from CI or another automated pipeline, keep the placeholder in git and inject the real value at deploy time instead:
-
-```sh
-D1_DATABASE_ID=<your-d1-database-uuid> pnpm run deploy
-```
-
-If your remote database is not named `cloudflare-ddns-db`, also set `D1_DATABASE_NAME`. The `predeploy` script writes those values into `wrangler.jsonc` in the deploy workspace before validation and migrations run.
+If you skip this step, keep the committed `d1_databases` entry as-is. Wrangler can automatically provision the D1 database from that binding during `pnpm run deploy`, Workers Builds, or Deploy to Cloudflare.
 
 If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm run deploy` instead of `npx wrangler deploy`. This repository uses a pnpm workspace, so `pnpm deploy` runs pnpm's built-in workspace deploy command rather than the package script. `pnpm run deploy` is the form that runs this repository's `predeploy` step before `wrangler deploy`.
 
@@ -154,9 +148,9 @@ pnpm run deploy
 
 This runs D1 migrations automatically before deploying.
 
-For automated deploys, export `D1_DATABASE_ID` in the job environment before running `pnpm run deploy`. You only need `D1_DATABASE_NAME` if the bound database name differs from the default.
+On a first hosted deploy, Wrangler can auto-create the D1 database from the committed binding before applying remote migrations. If you already created the database up front with `pnpm setup:db` or `wrangler d1 create`, the same deploy command reuses that configured binding.
 
-For Workers Builds specifically, add `D1_DATABASE_ID` under Cloudflare dashboard Settings > Build > Build variables and secrets. Runtime Worker secrets from Settings > Variables & Secrets are not exposed to the build/deploy process.
+Workers Builds does not need a dedicated D1 build secret for this repository. Use the committed D1 binding and set the Deploy command to `pnpm run deploy`.
 
 ## Environment variables
 

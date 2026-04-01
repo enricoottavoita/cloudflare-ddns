@@ -3,8 +3,6 @@ import {
 	getRequiredVar,
 	getPrimaryD1Binding,
 	isMainModule,
-	isPlaceholderDatabaseId,
-	isUuid,
 	parseSecretList,
 	readWranglerConfig,
 	runWrangler,
@@ -24,10 +22,8 @@ export async function verifySetup(): Promise<boolean> {
 	const binding = getPrimaryD1Binding(config);
 	if (!binding) {
 		errors.push("Missing D1 binding `DB` in wrangler.jsonc.");
-	} else if (!binding.database_id || !isUuid(binding.database_id) || isPlaceholderDatabaseId(binding.database_id)) {
-		errors.push(
-			"D1 database_id is missing or still set to the placeholder. Run `pnpm setup:db`, or set D1_DATABASE_ID before automated deploys.",
-		);
+	} else if (!binding.database_name?.trim()) {
+		errors.push("Missing D1 database_name for binding `DB` in wrangler.jsonc.");
 	}
 
 	const missingSecretsConfig = missingRequiredSecrets(config);

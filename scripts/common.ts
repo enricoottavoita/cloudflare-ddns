@@ -26,10 +26,6 @@ export const REQUIRED_SECRETS = [
 
 export const REQUIRED_VARS = ["DDNS_ALLOWED_HOSTNAMES"] as const;
 
-export const PLACEHOLDER_DATABASE_ID = "00000000-0000-0000-0000-000000000000";
-export const D1_DATABASE_ID_ENV = "D1_DATABASE_ID";
-export const D1_DATABASE_NAME_ENV = "D1_DATABASE_NAME";
-
 const uuidSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const zoneIdSchema = z.string().regex(/^[0-9a-f]{32}$/i, "CF_ZONE_ID should be a 32-character hexadecimal zone ID.");
 const nonEmptyTextSchema = z.string().trim().min(1, "This value cannot be empty.");
@@ -43,7 +39,7 @@ type RequiredVar = (typeof REQUIRED_VARS)[number];
 export interface WranglerD1Binding {
 	binding: string;
 	database_name: string;
-	database_id: string;
+	database_id?: string;
 }
 
 interface WranglerSecretsConfig {
@@ -112,10 +108,6 @@ export function isUuid(value: string): boolean {
 
 export function isZoneId(value: string): boolean {
 	return zoneIdSchema.safeParse(value).success;
-}
-
-export function isPlaceholderDatabaseId(value: string): boolean {
-	return value === PLACEHOLDER_DATABASE_ID;
 }
 
 function isValidHostnameLabel(value: string): boolean {
@@ -362,8 +354,4 @@ export function parseSecretList(output: string): RequiredSecret[] {
 
 export function getRequiredVar(config: WranglerConfig, name: RequiredVar): string {
 	return config.vars?.[name]?.trim() ?? "";
-}
-
-export function getOptionalEnvVar(name: string): string {
-	return process.env[name]?.trim() ?? "";
 }

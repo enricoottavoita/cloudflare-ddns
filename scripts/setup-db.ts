@@ -3,7 +3,6 @@ import {
 	getPrimaryD1Binding,
 	info,
 	isMainModule,
-	isPlaceholderDatabaseId,
 	isUuid,
 	prompt,
 	readWranglerConfig,
@@ -23,7 +22,7 @@ export async function setupDatabase(): Promise<string> {
 	const existingBinding = getPrimaryD1Binding(config);
 	const existingId = existingBinding?.database_id;
 
-	if (existingId && isUuid(existingId) && !isPlaceholderDatabaseId(existingId)) {
+	if (existingId && isUuid(existingId)) {
 		await info(`D1 database is already configured: ${existingBinding.database_name} (${existingId})`);
 		return existingId;
 	}
