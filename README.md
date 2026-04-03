@@ -3,14 +3,56 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/okikio/cloudflare-ddns)
 
-A Cloudflare Worker that keeps DNS records in sync with your changing public IP address. Designed for Synology NAS devices but works with any HTTP client.
+A Cloudflare Worker that keeps a hostname such as `nas.example.com` pointed at your changing public IP address. It is designed for Synology NAS' but can work with any HTTP client.
 
-When your NAS or a cron script calls this worker, it reads the caller's IP from the request, compares it to the existing Cloudflare DNS record, and creates or patches the record if needed. Responses follow the DynDNS2 protocol so Synology DSM recognizes them natively.
+When your NAS or a script calls this worker, it reads the caller's IP from the request, compares it to the existing Cloudflare DNS record, and creates or updates the record if needed. Responses follow the DynDNS2 protocol so Synology DSM recognizes them like a normal DDNS provider.
 
 ![Synology DSM DDNS settings showing a custom Cloudflare provider using a Cloudflare Worker /nic/update DynDNS2 URL with hostname, IP, username, and password fields.](assets/synology-ddns-dashboard.png)
 
 > [!NOTE]
-> Use Deploy to Cloudflare if you want Cloudflare to create your own copy of the repo, provision supported resources such as D1, and build the Worker for you. This avoids a manual local clone, but Cloudflare's documented button flow still creates a new GitHub or GitLab repository copy for the user. Keep your zone-specific values ready before you start: the setup flow still needs your Cloudflare API token, zone ID, shared secret, and allowed hostnames. The helper links below are the fastest way to gather them.
+> Most people should use Deploy to Cloudflare. That path lets Cloudflare deploy a copy of the Cloudflare Worker on your Cloudflare account, and provision supported resources such as D1 for keeping track of domain name changes. Use the local Wrangler setup only if you want to develop or operate the project from your own machine.
+
+## Getting started
+
+If you want this working on a Synology NAS and do not want to deal with local tooling, follow these two guides in order:
+
+1. [docs/cloudflare-setup.md](docs/cloudflare-setup.md) for the Cloudflare side
+2. [docs/synology-setup.md](docs/synology-setup.md) for the DSM screens
+
+It's much simpler using Deploy to Cloudflare for the first part, and that path still gives you the same Worker URL and shared secret values to use in DSM.
+
+```text
+Cloudflare account + domain
+            |
+            v
+Deploy to Cloudflare
+            |
+            v
+Worker URL + shared secret
+            |
+            v
+Synology DSM custom DDNS
+            |
+            v
+Automatic DNS updates when your IP changes
+```
+
+## Prerequisites
+
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up)
+- A domain with its DNS managed by Cloudflare
+- The hostname you want to keep updated, for example `nas.example.com`
+- A Cloudflare API token with `DNS Write` permission for that zone. The easiest way is Cloudflare's [Edit Zone DNS token template](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/).
+- Your zone ID from the Cloudflare dashboard. If you do not know where to look, use [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/).
+- A shared secret you choose for the NAS to send as the password
+
+If you want one update to refresh both an exact record and a wildcard companion, decide that now and allow both names, for example `nas.example.com,*.nas.example.com`.
+
+## Various setup paths
+- [docs/cloudflare-setup.md](docs/cloudflare-setup.md): easiest setup path for most users
+- [docs/synology-setup.md](docs/synology-setup.md): step-by-step DSM walkthrough with screenshots
+- [Advanced local setup](#advanced-local-setup): local clone, Wrangler, and explicit D1 workflows
+- [JSON API](#json-api): script and automation usage
 
 ## Features
 
@@ -21,49 +63,27 @@ When your NAS or a cron script calls this worker, it reads the caller's IP from 
 - Hostname allowlist to limit what records can be changed
 - Configurable proxied/DNS-only mode and TTL
 
-## Quick start
+## For most users
 
-Choose the path that matches how you want to manage the project:
+The easiest path is:
 
-- Deploy to Cloudflare for a dashboard-led setup and a repo copy in your own GitHub account
-- Local setup with a few explicit Wrangler helper commands if you want the repo on disk
+1. Deploy the Worker with [docs/cloudflare-setup.md](docs/cloudflare-setup.md)
+2. Configure DSM with [docs/synology-setup.md](docs/synology-setup.md)
+3. Save the DDNS entry in DSM and confirm you get `good <ip>` or `nochg <ip>`
 
-Use the local path for a more hands on deploy:
+If you are not using Synology and just want the API, deploy the Worker first and then use the JSON example in [JSON API](#json-api).
 
-```sh
-git clone https://github.com/okikio/cloudflare-ddns.git
-cd cloudflare-ddns
-pnpm install
-pnpm setup:secrets
-pnpm run deploy
-```
+## Advanced local deploy
 
-If you want to attach a specific D1 database and run explicit remote migrations from a local clone, keep reading.
+Use this path if you want to deploy manually, need explicit local control over Wrangler, or want to manage D1 from your own machine.
 
-## Before you deploy
-
-If you want the easiest Deploy to Cloudflare path, open these in separate tabs before you press the button:
-
-- [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) for Cloudflare's `Edit Zone DNS` template, which grants the zone-scoped `DNS Write` permission this worker needs. Restrict the token to the one zone you want this worker to manage.
-- [Create API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) if you want Cloudflare's step-by-step token creation flow after confirming the right template and permission.
-- [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/) if you do not already know where Cloudflare shows the zone ID.
-- [1Password password generator](https://1password.com/password-generator/) or [Bitwarden password generator](https://bitwarden.com/password-generator/) if you want a browser-based shared secret generator from a reputable password-manager vendor.
-
-You will still need to choose the hostnames this worker may update, for example `nas.example.com,*.nas.example.com`.
-
-Deploy to Cloudflare can prefill descriptions and defaults, but it cannot currently give you a zone picker or generate the shared secret inside the form. The most reliable path is Cloudflare's built-in `Edit Zone DNS` token template plus these lookup links.
-
-## Prerequisites
+### Local prerequisites
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier works)
 - A domain with its DNS managed by Cloudflare
 - A [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) created from Cloudflare's [API token templates](https://developers.cloudflare.com/fundamentals/api/reference/template/) page using the `Edit Zone DNS` template. That template grants the zone-scoped `DNS Write` permission this worker needs.
 - Your zone ID from the domain overview page in the Cloudflare dashboard. Cloudflare documents the lookup flow in [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/).
 - [Node.js](https://nodejs.org/) 22+ and [pnpm](https://pnpm.io/) 9+
-
-## Setup
-
-### Local Wrangler setup
 
 ### 1. Clone and install
 
@@ -76,7 +96,7 @@ pnpm install
 ### 2. Create the D1 database
 
 ```sh
-npx wrangler d1 create cloudflare-ddns-db
+pnpm wrangler d1 create cloudflare-ddns-db
 ```
 
 If you want the database provisioned before the first deploy, copy the generated D1 binding back into your local `wrangler.jsonc`, or use `pnpm setup:db` to create the database and write that binding for you.
@@ -92,7 +112,7 @@ If you already have an existing D1 database that your own Worker must keep using
 ```sh
 cp .env.production.example .env.production
 # edit .env.production with your real values
-npx wrangler secret bulk .env.production
+pnpm wrangler secret bulk .env.production
 ```
 
 You can also use `pnpm setup:secrets`, which prompts for the values and uploads them safely in one pass.
@@ -153,7 +173,7 @@ pnpm run deploy
 
 `pnpm run migrate:remote` requires `DDNS_D1_DATABASE_ID` because remote D1 operations need the real database UUID.
 
-## Environment variables
+## Configuration reference
 
 These non-secret variables live in `wrangler.jsonc` and can be overridden per-environment:
 
@@ -164,11 +184,13 @@ These non-secret variables live in `wrangler.jsonc` and can be overridden per-en
 | `DDNS_TTL` | `"1"` | DNS record TTL in seconds. `"1"` means automatic. Valid range: 60-86400. |
 | `DDNS_LOG_RETENTION_DAYS` | `"30"` | How many days of update logs to keep in D1. A cron job runs every 6 hours to prune older rows. |
 
-## Usage
+## Using the worker
 
 ### Synology DSM
 
-If you want a screenshot-led DSM walkthrough for non-technical users, use [docs/synology-setup.md](docs/synology-setup.md).
+For most people, use [docs/synology-setup.md](docs/synology-setup.md). That guide walks through the DSM screens with screenshots.
+
+If you already know DSM and only need the values, use the fields below.
 
 In **Control Panel > External Access > DDNS > Customize**:
 
