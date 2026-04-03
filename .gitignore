@@ -12,6 +12,7 @@
 .dev.vars*
 !.env.example
 !.env.production.example
+.wrangler/
 *.orig
 *.pyc
 *.swp
