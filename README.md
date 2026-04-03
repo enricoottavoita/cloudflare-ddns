@@ -51,6 +51,7 @@ If you want one update to refresh both an exact record and a wildcard companion,
 ## Various setup paths
 - [docs/cloudflare-setup.md](docs/cloudflare-setup.md): easiest setup path for most users
 - [docs/synology-setup.md](docs/synology-setup.md): step-by-step DSM walkthrough with screenshots
+- [docs/security-model.md](docs/security-model.md): current trust model, limitations, and hardening options
 - [Advanced local setup](#advanced-local-setup): local clone, Wrangler, and explicit D1 workflows
 - [JSON API](#json-api): script and automation usage
 
@@ -60,6 +61,7 @@ If you want one update to refresh both an exact record and a wildcard companion,
 - JSON API for scripts and automation (`POST /update` with OpenAPI docs)
 - IPv4 (A) and IPv6 (AAAA) support
 - Optional D1-backed audit log with scheduled cleanup
+- Default per-IP rate limiting for update endpoints
 - Hostname allowlist to limit what records can be changed
 - Configurable proxied/DNS-only mode and TTL
 
@@ -72,6 +74,10 @@ The easiest path is:
 3. Save the DDNS entry in DSM and confirm you get `good <ip>` or `nochg <ip>`
 
 If you are not using Synology and just want the API, deploy the Worker first and then use the JSON example in [JSON API](#json-api).
+
+The default deploy path also enables a fixed-window rate limit of 10 update requests per minute per client IP. That is meant to slow down bad password guessing, runaway retry loops, and damage from a leaked secret without requiring extra Cloudflare bindings.
+
+If you need to understand what this setup does and does not protect, read [docs/security-model.md](docs/security-model.md). The short version is that this worker is designed for trusted clients you control, not for strong per-device identity or zero-trust exposure on its own.
 
 ## Advanced local deploy
 
@@ -179,10 +185,23 @@ These non-secret variables live in `wrangler.jsonc` and can be overridden per-en
 
 | Variable | Default | Description |
 |---|---|---|
-| `DDNS_ALLOWED_HOSTNAMES` | none | Required. Comma-separated hostnames this worker may update, e.g. `nas.example.com,home.example.com`. Wildcard companions such as `*.nas.example.com` are supported as explicit entries. |
+| `DDNS_ALLOWED_HOSTNAMES` | `nas.example.com,*.nas.example.com` | Comma-separated hostnames this worker may update. Replace the default with your real hostname list before production use. Wildcard companions such as `*.nas.example.com` are supported as explicit entries. |
 | `DDNS_PROXIED` | `"false"` | Whether DNS records are proxied through Cloudflare. Most NAS setups need `"false"` (DNS-only) for direct IP access on non-standard ports. |
 | `DDNS_TTL` | `"1"` | DNS record TTL in seconds. `"1"` means automatic. Valid range: 60-86400. |
 | `DDNS_LOG_RETENTION_DAYS` | `"30"` | How many days of update logs to keep in D1. A cron job runs every 6 hours to prune older rows. |
+| `DDNS_RATE_LIMIT_MAX_REQUESTS` | `"10"` | Maximum number of update requests allowed per client IP within the current fixed window. Set to `"0"` to disable rate limiting. |
+| `DDNS_RATE_LIMIT_WINDOW_SECONDS` | `"60"` | Fixed-window size for DDNS rate limiting, in seconds. |
+
+## Shared secret rotation
+
+If you think `DDNS_SHARED_SECRET` was exposed, rotate it immediately:
+
+1. Generate a new random secret.
+2. Update `DDNS_SHARED_SECRET` in Cloudflare.
+3. Update every caller that stores the old secret, including DSM and any scripts using `X-DDNS-Secret`.
+4. Trigger a manual test request and confirm the worker returns `good <ip>` or `nochg <ip>`.
+
+If you use the D1 audit log, review recent rows for unusual request volume, repeated authentication failures, or unexpected update sources. The built-in per-IP rate limit reduces how fast a leaked secret can be abused, but it does not replace rotating the secret.
 
 ## Using the worker
 
@@ -210,6 +229,8 @@ Then add a DDNS entry:
 
 DSM will call the worker whenever it detects an IP change. The worker responds with `good <ip>` or `nochg <ip>` on success.
 
+If DSM or another client starts retrying too quickly, the worker now returns HTTP `429` with a `Retry-After` header. The Synology-compatible body stays `911` so the client treats it as a retryable server-side problem.
+
 If you want one request for `nas.example.com` to also update `*.nas.example.com`, include both in `DDNS_ALLOWED_HOSTNAMES`, for example `nas.example.com,*.nas.example.com`. The worker treats the wildcard entry as a second managed DNS record and updates both records together.
 
 ### JSON API
@@ -226,6 +247,8 @@ Omit `ip` to use the caller's public IP (from Cloudflare's `CF-Connecting-IP` he
 Wildcard records work the same way here: if `DDNS_ALLOWED_HOSTNAMES` contains both `nas.example.com` and `*.nas.example.com`, a JSON update request for `nas.example.com` updates both records and returns per-target results in the response.
 
 OpenAPI documentation is served at the worker's root URL (`/`).
+
+If a client IP exceeds the default fixed-window rate limit, `POST /update` returns HTTP `429` with a JSON error body and a `Retry-After` header.
 
 ### Health check
 
