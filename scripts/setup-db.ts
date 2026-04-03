@@ -11,6 +11,7 @@ import {
 	outro,
 	writeWranglerConfig,
 } from "./common.ts";
+import process from "node:process";
 
 export async function setupDatabase(): Promise<string> {
 	const config = await readWranglerConfig();
