@@ -170,7 +170,7 @@ describe("GET /nic/update — D1 logging", () => {
 		expect(results[0].source).toBe("synology");
 	});
 
-	it("still updates DNS when the log table is missing", async () => {
+	it("recreates the log schema on first write when the table is missing", async () => {
 		await dropLogSchema(env.DB);
 
 		const response = await SELF.fetch(makeSynologyUrl({ myip: "198.51.100.25" }));
@@ -180,10 +180,14 @@ describe("GET /nic/update — D1 logging", () => {
 		await new Promise((r) => setTimeout(r, 50));
 
 		const { results } = await env.DB.prepare(
-			"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'ddns_logs'",
+			"SELECT hostname, ip, action, source FROM ddns_logs ORDER BY id DESC LIMIT 1",
 		).all();
 
-		expect(results).toHaveLength(0);
+		expect(results).toHaveLength(1);
+		expect(results[0].hostname).toBe("nas.example.com");
+		expect(results[0].ip).toBe("198.51.100.25");
+		expect(results[0].action).toBe("created");
+		expect(results[0].source).toBe("synology");
 	});
 });
 
