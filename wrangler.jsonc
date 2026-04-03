@@ -33,10 +33,11 @@
 		]
 	},
 	"vars": {
-		"DDNS_ALLOWED_HOSTNAMES": "nas.example.com,*.nas.example.com",
 		"DDNS_PROXIED": "false",
 		"DDNS_TTL": "1",
-		"DDNS_LOG_RETENTION_DAYS": "30"
+		"DDNS_LOG_RETENTION_DAYS": "30",
+		"DDNS_RATE_LIMIT_MAX_REQUESTS": "10",
+		"DDNS_RATE_LIMIT_WINDOW_SECONDS": "60"
 	},
 	"triggers": {
 		"crons": [

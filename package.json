@@ -45,7 +45,7 @@
 				"description": "Long random password used by Synology or other clients to authenticate update requests. Use at least 32 random characters."
 			},
 			"DDNS_ALLOWED_HOSTNAMES": {
-				"description": "Comma-separated allowlist of DNS names this worker may update, for example nas.example.com,*.nas.example.com."
+				"description": "Comma-separated allowlist of DNS names this worker may update, for example `nas.example.com,*.nas.example.com`."
 			},
 			"DDNS_PROXIED": {
 				"description": "Set to false for most NAS setups. Use true only if you want the updated records proxied through Cloudflare."
