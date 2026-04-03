@@ -1,5 +1,5 @@
 import { SELF } from "cloudflare:test";
-import { env } from "cloudflare:workers";
+import { env, exports } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createMockDnsApi, dropLogSchema } from "../helpers";
