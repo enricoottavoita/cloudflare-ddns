@@ -48,6 +48,7 @@ interface WranglerSecretsConfig {
 
 export interface WranglerConfig {
 	name: string;
+	main?: string;
 	d1_databases?: WranglerD1Binding[];
 	secrets?: WranglerSecretsConfig;
 	vars?: Record<string, string>;
@@ -248,7 +249,9 @@ export async function prompt(question: string, options: PromptOptions = {}): Pro
 			message: question,
 			initialValue: options.defaultValue,
 			placeholder: options.placeholder,
-			validate: options.validate,
+			validate: options.validate
+				? (value) => options.validate?.(value ?? "")
+				: undefined,
 		});
 
 		handleClackCancel(answer);

@@ -41,6 +41,13 @@ function getDatabaseIdFromEnv(name: string): string | undefined {
 	return value ? value : undefined;
 }
 
+function toGeneratedConfigRelativePath(configPath: string): string {
+	const absolutePath = path.resolve(projectRoot, configPath);
+	const relativePath = path.relative(generatedDeployDir, absolutePath);
+	const normalizedPath = relativePath.split(path.sep).join("/");
+	return normalizedPath.startsWith(".") ? normalizedPath : `./${normalizedPath}`;
+}
+
 function buildGeneratedConfig(config: WranglerConfig, databaseId: string, previewDatabaseId?: string): WranglerConfig {
 	const binding = getPrimaryD1Binding(config);
 	if (!binding) {
@@ -49,6 +56,7 @@ function buildGeneratedConfig(config: WranglerConfig, databaseId: string, previe
 
 	return {
 		...config,
+		...(typeof config.main === "string" ? { main: toGeneratedConfigRelativePath(config.main) } : {}),
 		d1_databases: [
 			{
 				...binding,
