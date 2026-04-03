@@ -1,6 +1,8 @@
 # Synology DSM Setup
 
-This guide is for DSM users who want the worker to behave like a normal Synology DDNS provider.
+This guide is for DSM users who already have a deployed Worker and now want Synology to use it like a normal DDNS provider.
+
+When you finish, DSM should automatically call the Worker whenever your public IP changes.
 
 Before you start, make sure the worker is already configured with:
 
@@ -8,7 +10,7 @@ Before you start, make sure the worker is already configured with:
 - a `DDNS_SHARED_SECRET`
 - a hostname listed in `DDNS_ALLOWED_HOSTNAMES`
 
-If you have not finished the Cloudflare side yet, go back to [README.md](../README.md) and use the guided setup flow first.
+If you have not finished the Cloudflare side yet, go to [cloudflare-setup.md](./cloudflare-setup.md) first.
 
 ## What you need in front of you
 
@@ -73,7 +75,7 @@ On success, the worker returns one of these values:
 - `good <ip>` when the DNS record was created or updated
 - `nochg <ip>` when the DNS record already matched your current IP
 
-## Copy exactly
+## Example values
 
 If you want a copy-and-paste example, replace the placeholders below with your values:
 
