@@ -108,6 +108,10 @@ export async function cleanupLogs(db: D1Database, retentionDays: number): Promis
 			.run();
 		return result.meta.changes ?? 0;
 	} catch (err) {
+		if (isMissingLogTableError(err)) {
+			return 0;
+		}
+
 		console.error("Failed to clean up DDNS logs:", err);
 		return 0;
 	}
