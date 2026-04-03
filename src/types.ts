@@ -42,6 +42,17 @@ export interface DdnsEnv extends Env {
 	 * cleanup job deletes them. Defaults to `"30"`.
 	 */
 	DDNS_LOG_RETENTION_DAYS: string;
+	/**
+	 * Maximum number of update requests allowed per client IP within the
+	 * current fixed window. Set to `"0"` to disable rate limiting.
+	 * Defaults to `"10"`.
+	 */
+	DDNS_RATE_LIMIT_MAX_REQUESTS: string;
+	/**
+	 * Fixed window size, in seconds, used for per-client DDNS rate limits.
+	 * Defaults to `"60"`.
+	 */
+	DDNS_RATE_LIMIT_WINDOW_SECONDS: string;
 }
 
 /** Hono context typed with the DDNS environment bindings. */

@@ -13,11 +13,14 @@ import { ApiException, contentJson, InputValidationException, OpenAPIRoute } fro
 import { z } from "zod";
 import { performDdnsUpdates } from "../ddns";
 import { logUpdate } from "../logging";
+import { consumeRateLimit } from "../rate-limit";
 import {
 	getDefaultHostname,
 	isIpAddress,
 	IpAddressSchema,
 	parseAllowedHostnames,
+	parseRateLimitMaxRequests,
+	parseRateLimitWindowSeconds,
 	resolveUpdateHostnames,
 } from "../validation";
 
@@ -93,6 +96,29 @@ export class UpdateEndpoint extends OpenAPIRoute {
 
 	async handle(c: AppContext) {
 		const env: DdnsEnv = c.env;
+		const clientIp = c.req.header("CF-Connecting-IP")?.trim();
+		const maxRequests = parseRateLimitMaxRequests(env.DDNS_RATE_LIMIT_MAX_REQUESTS);
+		if (clientIp && maxRequests > 0) {
+			const rateLimit = await consumeRateLimit(
+				env.DB,
+				`ddns-update:${clientIp}`,
+				maxRequests,
+				parseRateLimitWindowSeconds(env.DDNS_RATE_LIMIT_WINDOW_SECONDS),
+			);
+
+			if (!rateLimit.allowed) {
+				return c.json(
+					{
+						success: false,
+						errors: [{ code: 4290, message: "Rate limit exceeded" }],
+					},
+					429,
+					{
+						"Retry-After": String(rateLimit.retryAfterSeconds),
+					},
+				);
+			}
+		}
 
 		// Authenticate via header.
 		const secret = c.req.header("X-DDNS-Secret");

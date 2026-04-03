@@ -9,6 +9,8 @@ import { HealthEndpoint } from "./endpoints/health";
 import { SynologyUpdateEndpoint } from "./endpoints/synology";
 import { UpdateEndpoint } from "./endpoints/update";
 import { cleanupLogs } from "./logging";
+import { cleanupRateLimits } from "./rate-limit";
+import { parseRateLimitWindowSeconds } from "./validation";
 
 // ---------------------------------------------------------------------------
 // App
@@ -64,12 +66,20 @@ export default {
 		ctx: ExecutionContext,
 	): Promise<void> {
 		const retentionDays = Number.parseInt(env.DDNS_LOG_RETENTION_DAYS ?? "30", 10) || 30;
+		const rateLimitWindowSeconds = parseRateLimitWindowSeconds(env.DDNS_RATE_LIMIT_WINDOW_SECONDS);
 		ctx.waitUntil(
-			cleanupLogs(env.DB, retentionDays).then((deleted) => {
-				if (deleted > 0) {
-					console.log(`Cleaned up ${deleted} DDNS log rows older than ${retentionDays} days`);
-				}
-			}),
+			Promise.all([
+				cleanupLogs(env.DB, retentionDays).then((deleted) => {
+					if (deleted > 0) {
+						console.log(`Cleaned up ${deleted} DDNS log rows older than ${retentionDays} days`);
+					}
+				}),
+				cleanupRateLimits(env.DB, rateLimitWindowSeconds).then((deleted) => {
+					if (deleted > 0) {
+						console.log(`Cleaned up ${deleted} stale DDNS rate limit rows`);
+					}
+				}),
+			]),
 		);
 	},
 };

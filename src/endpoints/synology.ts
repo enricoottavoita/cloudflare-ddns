@@ -18,7 +18,15 @@ import type { AppContext, DdnsEnv } from "../types";
 import { DDNS_RESPONSE, UPDATE_ACTION } from "../types";
 import { performDdnsUpdates } from "../ddns";
 import { logUpdate } from "../logging";
-import { isIpv4, isIpv6, parseAllowedHostnames, resolveUpdateHostnames } from "../validation";
+import { consumeRateLimit } from "../rate-limit";
+import {
+	isIpv4,
+	isIpv6,
+	parseAllowedHostnames,
+	parseRateLimitMaxRequests,
+	parseRateLimitWindowSeconds,
+	resolveUpdateHostnames,
+} from "../validation";
 import { z } from "zod";
 
 const SynologyQuery = z.object({
@@ -57,6 +65,17 @@ function ddns(body: string, status = 200): Response {
 		headers: {
 			"Content-Type": "text/plain; charset=utf-8",
 			"Cache-Control": "no-store",
+		},
+	});
+}
+
+function ddnsRateLimited(retryAfterSeconds: number): Response {
+	return new Response(DDNS_RESPONSE.SERVER_ERROR, {
+		status: 429,
+		headers: {
+			"Content-Type": "text/plain; charset=utf-8",
+			"Cache-Control": "no-store",
+			"Retry-After": String(retryAfterSeconds),
 		},
 	});
 }
@@ -104,6 +123,21 @@ export class SynologyUpdateEndpoint extends OpenAPIRoute {
 		const env: DdnsEnv = c.env;
 
 		try {
+			const clientIp = c.req.header("CF-Connecting-IP")?.trim();
+			const maxRequests = parseRateLimitMaxRequests(env.DDNS_RATE_LIMIT_MAX_REQUESTS);
+			if (clientIp && maxRequests > 0) {
+				const rateLimit = await consumeRateLimit(
+					env.DB,
+					`ddns-update:${clientIp}`,
+					maxRequests,
+					parseRateLimitWindowSeconds(env.DDNS_RATE_LIMIT_WINDOW_SECONDS),
+				);
+
+				if (!rateLimit.allowed) {
+					return ddnsRateLimited(rateLimit.retryAfterSeconds);
+				}
+			}
+
 			const data = await this.getValidatedData<typeof this.schema>();
 			const query = data.query as z.infer<typeof SynologyQuery>;
 			const hostname = (query.hostname ?? "").trim().toLowerCase();

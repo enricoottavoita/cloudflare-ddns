@@ -69,6 +69,28 @@ export function parseTtl(value: string | undefined): number {
 	return ttl;
 }
 
+function parseIntegerInRange(
+	value: string | undefined,
+	fallback: number,
+	minimum: number,
+	maximum: number,
+): number {
+	if (!value) return fallback;
+	const parsed = Number.parseInt(value, 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	if (parsed < minimum) return minimum;
+	if (parsed > maximum) return maximum;
+	return parsed;
+}
+
+export function parseRateLimitMaxRequests(value: string | undefined): number {
+	return parseIntegerInRange(value, 10, 0, 1000);
+}
+
+export function parseRateLimitWindowSeconds(value: string | undefined): number {
+	return parseIntegerInRange(value, 60, 1, 3600);
+}
+
 /**
  * Split a comma-separated hostname list into a normalized array.
  * Each entry is trimmed and lowercased. Empty entries are dropped.
