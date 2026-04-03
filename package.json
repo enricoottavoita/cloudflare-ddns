@@ -28,8 +28,8 @@
 		"setup:db": "node --experimental-strip-types ./scripts/setup-db.ts",
 		"setup:secrets": "node --experimental-strip-types ./scripts/setup-secrets.ts",
 		"typecheck:scripts": "tsc -p tsconfig.scripts.json",
-		"deploy": "pnpm run prepare:deploy-config && wrangler deploy",
-		"migrate:remote": "pnpm run prepare:deploy-config:require-d1-id && wrangler d1 migrations apply DB --remote",
+		"deploy": "pnpm run migrate:remote && wrangler deploy",
+		"migrate:remote": "pnpm run prepare:deploy-config && wrangler d1 migrations apply DB --remote",
 		"dev": "pnpm run prepare:deploy-config && wrangler d1 migrations apply DB --local && wrangler dev",
 		"test": "pnpm run prepare:deploy-config && wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
 	},

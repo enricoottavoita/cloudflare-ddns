@@ -128,6 +128,8 @@ This is the screen where those values go:
 
 Submit the form and wait for Cloudflare to finish building and deploying the Worker.
 
+This template's deploy command runs the remote D1 migrations before `wrangler deploy`, so the first Deploy to Cloudflare build provisions the D1 database and applies the SQL schema in the same flow.
+
 When the deploy finishes, copy the Worker URL. It usually looks like `https://<worker-name>.<subdomain>.workers.dev`.
 
 ## Step 5: Continue to Synology DSM

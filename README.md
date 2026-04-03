@@ -112,6 +112,8 @@ If you skip this step, keep the committed `d1_databases` entry as-is. Wrangler c
 
 If you use Cloudflare Workers Builds with Git integration, set the project Deploy command to `pnpm run deploy` instead of `npx wrangler deploy`. This repository uses a pnpm workspace, so `pnpm deploy` runs pnpm's built-in workspace deploy command rather than the package script. `pnpm run deploy` is the form that runs this repository's plain `wrangler deploy` script.
 
+`pnpm run deploy` also runs `wrangler d1 migrations apply DB --remote` before `wrangler deploy`. Cloudflare recommends using the D1 binding name in the deploy script for Deploy to Cloudflare templates so first deploys can provision the database and apply migrations in the same flow.
+
 If you already have an existing D1 database that your own Worker must keep using, set the `DDNS_D1_DATABASE_ID` environment variable in your local shell or in Workers Builds. The deploy script will generate a temporary `.wrangler/deploy/wrangler.generated.jsonc` file containing that real `database_id` only for the current deploy. The committed template config remains unchanged.
 
 ### 3. Set secrets
@@ -152,9 +154,9 @@ You can also use `pnpm setup:secrets`, which uploads the actual secrets and writ
 pnpm run deploy
 ```
 
-This runs a standard `wrangler deploy`.
+This runs `pnpm run migrate:remote && wrangler deploy`.
 
-For this repository's default template path, the Worker deploys without requiring a pre-existing D1 `database_id`. DDNS updates still work before the audit-log table exists, but D1-backed audit logging only becomes active after you apply the SQL migrations from a local/operator workflow.
+For this repository's default template path, the Worker deploys without requiring a pre-existing D1 `database_id`. The deploy script applies remote D1 migrations through the `DB` binding and then deploys the Worker, so the audit-log table is ready on first deploy in Deploy to Cloudflare and Workers Builds.
 
 Workers Builds does not need a dedicated D1 build secret for this repository when you want the template-safe default path. Use the committed D1 binding and set the Deploy command to `pnpm run deploy`.
 
@@ -169,7 +171,7 @@ pnpm run migrate:remote
 pnpm run deploy
 ```
 
-That path writes a real `database_id` into your local `wrangler.jsonc`, uploads the required secrets, applies the SQL migrations remotely, and then deploys the Worker. It is the recommended way to enable the D1-backed audit log from a local/operator workflow.
+That path writes a real `database_id` into your local `wrangler.jsonc`, uploads the required secrets, applies the SQL migrations remotely, and then deploys the Worker.
 
 If you want the same behavior in CI or Workers Builds without committing the ID, set `DDNS_D1_DATABASE_ID` and then use:
 
@@ -178,7 +180,7 @@ pnpm run migrate:remote
 pnpm run deploy
 ```
 
-`pnpm run migrate:remote` requires `DDNS_D1_DATABASE_ID` because remote D1 operations need the real database UUID.
+`pnpm run migrate:remote` uses the `DB` binding, so it works for both the default template-safe binding and an explicit `DDNS_D1_DATABASE_ID` override.
 
 ## Configuration reference
 
