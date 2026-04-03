@@ -10,6 +10,9 @@
 
 import type { UpdateAction } from "./types";
 
+// The Worker may need to recreate this table lazily on first write. Migration
+// files live on disk for operator and test workflows, but the runtime bundle
+// cannot read them from the filesystem inside Workers.
 const LOG_SCHEMA_STATEMENTS = [
 	`CREATE TABLE IF NOT EXISTS ddns_logs (
 		id            INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,

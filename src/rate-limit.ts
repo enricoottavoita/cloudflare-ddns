@@ -1,3 +1,6 @@
+// The Worker may need to recreate this table lazily when rate limiting is hit
+// before remote migrations have run. Migration files exist for operator and
+// test workflows, but the runtime bundle cannot load SQL files from disk.
 const RATE_LIMIT_SCHEMA_STATEMENTS = [
 	`CREATE TABLE IF NOT EXISTS ddns_rate_limits (
 		key               TEXT    PRIMARY KEY NOT NULL,
