@@ -10,7 +10,7 @@ When your NAS or a script calls this worker, it reads the caller's IP from the r
 ![Synology DSM DDNS settings showing a custom Cloudflare provider using a Cloudflare Worker /nic/update DynDNS2 URL with hostname, IP, username, and password fields.](assets/synology-ddns-dashboard.png)
 
 > [!NOTE]
-> Most people should use Deploy to Cloudflare. That path lets Cloudflare deploy a copy of the Cloudflare Worker on your Cloudflare account, and provision supported resources such as D1 for keeping track of domain name changes. Use the local Wrangler setup only if you want to develop or operate the project from your own machine.
+> Most people should use Deploy to Cloudflare. That path lets Cloudflare deploy a copy of the Cloudflare Worker on your Cloudflare account, provision supported resources such as D1, and set up Workers Builds for future deploys. It also requires connecting a GitHub or GitLab account because Cloudflare creates a repository copy as part of the flow. Use the local Wrangler setup only if you want to develop or operate the project from your own machine.
 
 ## Getting started
 
@@ -19,7 +19,7 @@ If you want this working on a Synology NAS and do not want to deal with local to
 1. [docs/cloudflare-setup.md](docs/cloudflare-setup.md) for the Cloudflare side
 2. [docs/synology-setup.md](docs/synology-setup.md) for the DSM screens
 
-It's much simpler using Deploy to Cloudflare for the first part, and that path still gives you the same Worker URL and shared secret values to use in DSM.
+It's much simpler using Deploy to Cloudflare for the first part, and that path still gives you the same Worker URL and shared secret values to use in DSM. It does require a GitHub or GitLab account for the repo-copy and build step.
 
 ```text
 Cloudflare account + domain
@@ -40,6 +40,7 @@ Automatic DNS updates when your IP changes
 ## Prerequisites
 
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up)
+- A GitHub or GitLab account if you want to use Deploy to Cloudflare
 - A domain with its DNS managed by Cloudflare
 - The hostname you want to keep updated, for example `nas.example.com`
 - A Cloudflare API token with `DNS Write` permission for that zone. The easiest way is Cloudflare's [Edit Zone DNS token template](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/).
