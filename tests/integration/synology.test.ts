@@ -2,7 +2,7 @@ import { SELF } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createMockDnsApi, dropLogSchema, makeSynologyUrl } from "../helpers";
+import { clearRuntimeTables, createMockDnsApi, dropLogSchema, makeSynologyUrl } from "../helpers";
 
 const dns = createMockDnsApi();
 const DEFAULT_ALLOWED_HOSTNAMES = "nas.example.com,home.example.com";
@@ -11,20 +11,28 @@ function setAllowedHostnames(value: string) {
 	Object.assign(env, { DDNS_ALLOWED_HOSTNAMES: value });
 }
 
+function setRateLimitConfig(maxRequests: string, windowSeconds = "60") {
+	Object.assign(env, {
+		DDNS_RATE_LIMIT_MAX_REQUESTS: maxRequests,
+		DDNS_RATE_LIMIT_WINDOW_SECONDS: windowSeconds,
+	});
+}
+
 beforeEach(() => {
 	setAllowedHostnames(DEFAULT_ALLOWED_HOSTNAMES);
+	setRateLimitConfig("10");
 	dns.reset();
 	dns.install();
 });
 
 
 beforeEach(async () => {
-	await env.DB.prepare("DELETE FROM ddns_logs").run();
+	await clearRuntimeTables(env.DB);
 });
 
 afterEach(async () => {
 	await new Promise((resolve) => setTimeout(resolve, 25));
-	await env.DB.prepare("DELETE FROM ddns_logs").run();
+	await clearRuntimeTables(env.DB);
 	dns.restore();
 });
 
@@ -43,6 +51,19 @@ describe("GET /nic/update — authentication", () => {
 		const response = await SELF.fetch(makeSynologyUrl({ password: "wrong-secret" }));
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("badauth");
+	});
+
+	it("returns 429 and 911 when a client exceeds the fixed-window rate limit", async () => {
+		setRateLimitConfig("2");
+		const headers = { "CF-Connecting-IP": "198.51.100.201" };
+
+		expect((await SELF.fetch(makeSynologyUrl(), { headers })).status).toBe(200);
+		expect((await SELF.fetch(makeSynologyUrl(), { headers })).status).toBe(200);
+
+		const response = await SELF.fetch(makeSynologyUrl(), { headers });
+		expect(response.status).toBe(429);
+		expect(await response.text()).toBe("911");
+		expect(response.headers.get("Retry-After")).toBeTruthy();
 	});
 });
 

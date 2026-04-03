@@ -20,6 +20,10 @@ export default defineConfig({
 					configPath: "./wrangler.jsonc",
 				},
 				miniflare: {
+					// Keep local tests aligned with the bundled workerd version until
+					// Wrangler/vitest-pool-workers is upgraded to a runtime that supports
+					// the production compatibility date from wrangler.jsonc.
+					compatibilityDate: "2026-04-01",
 					bindings: {
 						MIGRATIONS: migrations,
 						// Test credentials — these only exist inside miniflare.
@@ -30,12 +34,18 @@ export default defineConfig({
 						DDNS_PROXIED: "false",
 						DDNS_TTL: "1",
 						DDNS_LOG_RETENTION_DAYS: "30",
+						DDNS_RATE_LIMIT_MAX_REQUESTS: "10",
+						DDNS_RATE_LIMIT_WINDOW_SECONDS: "60",
 					},
 				},
 			};
 		}),
 	],
 	test: {
+		// Run one worker at a time in local tests. This reduces pressure on the
+		// bundled workerd/Miniflare runtime while we are pinned to an older local
+		// engine than the production compatibility date.
+		maxWorkers: 1,
 		setupFiles: ["./tests/apply-migrations.ts"],
 	},
 });

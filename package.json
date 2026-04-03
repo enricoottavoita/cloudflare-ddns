@@ -11,15 +11,15 @@
 		"@clack/prompts": "^1.2.0",
 		"chanfana": "^3.3.0",
 		"cloudflare": "^5.2.0",
-		"hono": "4.12.9",
+		"hono": "4.12.10",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "0.14.0",
+		"@cloudflare/vitest-pool-workers": "0.14.1",
 		"@types/node": "25.5.0",
 		"typescript": "6.0.2",
 		"vitest": "4.1.2",
-		"wrangler": "4.79.0"
+		"wrangler": "4.80.0"
 	},
 	"scripts": {
 		"cf-typegen": "wrangler types",

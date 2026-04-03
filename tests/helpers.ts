@@ -127,6 +127,27 @@ export async function dropLogSchema(db: D1Database): Promise<void> {
 	await db.prepare("DROP TABLE IF EXISTS ddns_logs").run();
 }
 
+export async function clearRuntimeTables(db: D1Database): Promise<void> {
+	for (const statement of [
+		"DELETE FROM ddns_logs",
+		"DELETE FROM ddns_rate_limits",
+	]) {
+		try {
+			await db.prepare(statement).run();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (!message.includes("no such table")) {
+				throw error;
+			}
+		}
+	}
+}
+
+export async function dropRateLimitSchema(db: D1Database): Promise<void> {
+	await db.prepare("DROP INDEX IF EXISTS idx_ddns_rate_limits_updated_at").run();
+	await db.prepare("DROP TABLE IF EXISTS ddns_rate_limits").run();
+}
+
 /** Build a Synology-style update URL with sensible defaults. */
 export function makeSynologyUrl(
 	overrides: {

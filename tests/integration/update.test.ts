@@ -1,8 +1,8 @@
 import { SELF } from "cloudflare:test";
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createMockDnsApi, dropLogSchema } from "../helpers";
+import { clearRuntimeTables, createMockDnsApi, dropLogSchema } from "../helpers";
 
 const dns = createMockDnsApi();
 const DEFAULT_ALLOWED_HOSTNAMES = "nas.example.com,home.example.com";
@@ -11,20 +11,28 @@ function setAllowedHostnames(value: string) {
 	Object.assign(env, { DDNS_ALLOWED_HOSTNAMES: value });
 }
 
+function setRateLimitConfig(maxRequests: string, windowSeconds = "60") {
+	Object.assign(env, {
+		DDNS_RATE_LIMIT_MAX_REQUESTS: maxRequests,
+		DDNS_RATE_LIMIT_WINDOW_SECONDS: windowSeconds,
+	});
+}
+
 beforeEach(() => {
 	setAllowedHostnames(DEFAULT_ALLOWED_HOSTNAMES);
+	setRateLimitConfig("10");
 	dns.reset();
 	dns.install();
 });
 
 
 beforeEach(async () => {
-	await env.DB.prepare("DELETE FROM ddns_logs").run();
+	await clearRuntimeTables(env.DB);
 });
 
 afterEach(async () => {
 	await new Promise((resolve) => setTimeout(resolve, 25));
-	await env.DB.prepare("DELETE FROM ddns_logs").run();
+	await clearRuntimeTables(env.DB);
 	dns.restore();
 });
 
@@ -73,6 +81,22 @@ describe("POST /update — authentication", () => {
 	it("returns 401 when secret is wrong", async () => {
 		const response = await SELF.fetch(makeUpdateRequest({ secret: "wrong", ip: "1.2.3.4" }));
 		expect(response.status).toBe(401);
+	});
+
+	it("returns 429 when a client exceeds the fixed-window rate limit", async () => {
+		setRateLimitConfig("2");
+
+		const request = () =>
+			makeUpdateRequest({
+				ip: "1.2.3.4",
+				cfConnectingIp: "198.51.100.200",
+			});
+		expect((await SELF.fetch(request())).status).toBe(200);
+		expect((await SELF.fetch(request())).status).toBe(200);
+
+		const response = await SELF.fetch(request());
+		expect(response.status).toBe(429);
+		expect(response.headers.get("Retry-After")).toBeTruthy();
 	});
 });
 
